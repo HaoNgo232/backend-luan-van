@@ -1,0 +1,18 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL_REPORT")
+}
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "./generated/client"
+}
+
+model ReportEntry {
+  id        String   @id @default(cuid())
+  type      String
+  payload   Json?
+  from      DateTime?
+  to        DateTime?
+  createdAt DateTime @default(now())
+}

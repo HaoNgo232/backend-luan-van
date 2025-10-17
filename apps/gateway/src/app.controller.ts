@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { Controller, Get, Inject, Query } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { AppService } from '@gateway/app.service';
@@ -14,14 +16,8 @@ export class AppController {
     @Inject('CART_SERVICE') private cartService: ClientProxy,
   ) {}
 
-  @Get()
-  getHello(): string {
-    return this.appService.getHello();
-  }
-
   @Get('users/by-id')
   async getUserById(@Query('id') id: string) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     return firstValueFrom(
       this.userService
         .send(EVENTS.USER.FIND_BY_ID, id)
@@ -31,7 +27,6 @@ export class AppController {
 
   @Get('products/by-slug')
   async getProductBySlug(@Query('slug') slug: string) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     return firstValueFrom(
       this.productService
         .send(EVENTS.PRODUCT.GET_BY_SLUG, { slug })
@@ -41,7 +36,6 @@ export class AppController {
 
   @Get('cart')
   async getCart(@Query('sessionId') sessionId: string) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     return firstValueFrom(
       this.cartService
         .send(EVENTS.CART.GET, { sessionId })
