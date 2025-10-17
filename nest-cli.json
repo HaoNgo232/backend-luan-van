@@ -10,6 +10,15 @@
   "monorepo": true,
   "root": "apps/gateway",
   "projects": {
+    "cart-app": {
+      "type": "application",
+      "root": "apps/cart-app",
+      "entryFile": "main",
+      "sourceRoot": "apps/cart-app/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/cart-app/tsconfig.app.json"
+      }
+    },
     "gateway": {
       "type": "application",
       "root": "apps/gateway",
@@ -17,6 +26,33 @@
       "sourceRoot": "apps/gateway/src",
       "compilerOptions": {
         "tsConfigPath": "apps/gateway/tsconfig.app.json"
+      }
+    },
+    "order-app": {
+      "type": "application",
+      "root": "apps/order-app",
+      "entryFile": "main",
+      "sourceRoot": "apps/order-app/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/order-app/tsconfig.app.json"
+      }
+    },
+    "payment-app": {
+      "type": "application",
+      "root": "apps/payment-app",
+      "entryFile": "main",
+      "sourceRoot": "apps/payment-app/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/payment-app/tsconfig.app.json"
+      }
+    },
+    "product-app": {
+      "type": "application",
+      "root": "apps/product-app",
+      "entryFile": "main",
+      "sourceRoot": "apps/product-app/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/product-app/tsconfig.app.json"
       }
     },
     "user-app": {
