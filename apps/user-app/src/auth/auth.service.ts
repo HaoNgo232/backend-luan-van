@@ -3,9 +3,12 @@ import { LoginDto, VerifyDto, RefreshDto } from '@shared/dto/auth.dto';
 
 @Injectable()
 export class AuthService {
-  async login(dto: LoginDto) {}
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async login(_dto: LoginDto) {}
 
-  async verify(dto: VerifyDto) {}
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async verify(_dto: VerifyDto) {}
 
-  async refresh(dto: RefreshDto) {}
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async refresh(_dto: RefreshDto) {}
 }

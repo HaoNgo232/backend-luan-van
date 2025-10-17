@@ -7,11 +7,15 @@ import {
 
 @Injectable()
 export class AddressService {
-  async listByUser(dto: AddressListByUserDto) {}
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async listByUser(_dto: AddressListByUserDto) {}
 
-  async create(dto: AddressCreateDto) {}
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async create(_dto: AddressCreateDto) {}
 
-  async update(id: string, dto: AddressUpdateDto) {}
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async update(_id: string, _dto: AddressUpdateDto) {}
 
-  async delete(id: string) {}
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async delete(_id: string) {}
 }

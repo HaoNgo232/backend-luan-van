@@ -10,19 +10,27 @@ import {
 
 @Injectable()
 export class ProductsService {
-  async getById(dto: ProductIdDto) {}
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async getById(_dto: ProductIdDto) {}
 
-  async getBySlug(dto: ProductSlugDto) {}
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async getBySlug(_dto: ProductSlugDto) {}
 
-  async list(query: ProductListQueryDto) {}
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async list(_query: ProductListQueryDto) {}
 
-  async create(dto: ProductCreateDto) {}
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async create(_dto: ProductCreateDto) {}
 
-  async update(id: string, dto: ProductUpdateDto) {}
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async update(_id: string, _dto: ProductUpdateDto) {}
 
-  async delete(id: string) {}
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async delete(_id: string) {}
 
-  async incrementStock(dto: StockChangeDto) {}
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async incrementStock(_dto: StockChangeDto) {}
 
-  async decrementStock(dto: StockChangeDto) {}
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async decrementStock(_dto: StockChangeDto) {}
 }

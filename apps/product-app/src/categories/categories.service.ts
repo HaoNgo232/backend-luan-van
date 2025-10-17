@@ -9,15 +9,21 @@ import {
 
 @Injectable()
 export class CategoriesService {
-  async getById(dto: CategoryIdDto) {}
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async getById(_dto: CategoryIdDto) {}
 
-  async getBySlug(dto: CategorySlugDto) {}
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async getBySlug(_dto: CategorySlugDto) {}
 
-  async list(query: CategoryListQueryDto) {}
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async list(_query: CategoryListQueryDto) {}
 
-  async create(dto: CategoryCreateDto) {}
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async create(_dto: CategoryCreateDto) {}
 
-  async update(id: string, dto: CategoryUpdateDto) {}
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async update(_id: string, _dto: CategoryUpdateDto) {}
 
-  async delete(id: string) {}
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async delete(_id: string) {}
 }

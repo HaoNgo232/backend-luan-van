@@ -8,11 +8,15 @@ import {
 
 @Injectable()
 export class PaymentsService {
-  async process(dto: PaymentProcessDto) {}
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async process(_dto: PaymentProcessDto) {}
 
-  async verify(dto: PaymentVerifyDto) {}
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async verify(_dto: PaymentVerifyDto) {}
 
-  async getById(dto: PaymentIdDto) {}
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async getById(_dto: PaymentIdDto) {}
 
-  async getByOrder(dto: PaymentByOrderDto) {}
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async getByOrder(_dto: PaymentByOrderDto) {}
 }

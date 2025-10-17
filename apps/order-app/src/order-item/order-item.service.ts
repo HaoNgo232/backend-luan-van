@@ -7,9 +7,12 @@ import {
 
 @Injectable()
 export class OrderItemService {
-  async listByOrder(dto: OrderItemListByOrderDto) {}
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async listByOrder(_dto: OrderItemListByOrderDto) {}
 
-  async addItem(dto: OrderItemAddDto) {}
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async addItem(_dto: OrderItemAddDto) {}
 
-  async removeItem(dto: OrderItemRemoveDto) {}
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async removeItem(_dto: OrderItemRemoveDto) {}
 }

@@ -7,9 +7,12 @@ import {
 
 @Injectable()
 export class ReportService {
-  async salesSummary(dto: SalesSummaryDto) {}
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async salesSummary(_dto: SalesSummaryDto) {}
 
-  async productPerformance(dto: ProductPerformanceDto) {}
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async productPerformance(_dto: ProductPerformanceDto) {}
 
-  async userCohort(dto: UserCohortDto) {}
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async userCohort(_dto: UserCohortDto) {}
 }

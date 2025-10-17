@@ -3,7 +3,9 @@ import { ARSnapshotCreateDto, ARSnapshotListDto } from '@shared/dto/ar.dto';
 
 @Injectable()
 export class ArService {
-  async snapshotCreate(dto: ARSnapshotCreateDto) {}
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async snapshotCreate(_dto: ARSnapshotCreateDto) {}
 
-  async snapshotList(dto: ARSnapshotListDto) {}
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async snapshotList(_dto: ARSnapshotListDto) {}
 }

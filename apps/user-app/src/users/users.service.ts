@@ -7,15 +7,21 @@ import {
 
 @Injectable()
 export class UsersService {
-  async findById(id: string) {}
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async findById(_id: string) {}
 
-  async findByEmail(email: string) {}
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async findByEmail(_email: string) {}
 
-  async create(dto: CreateUserDto) {}
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async create(_dto: CreateUserDto) {}
 
-  async update(id: string, dto: UpdateUserDto) {}
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async update(_id: string, _dto: UpdateUserDto) {}
 
-  async deactivate(id: string) {}
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async deactivate(_id: string) {}
 
-  async list(query: ListUsersDto) {}
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async list(_query: ListUsersDto) {}
 }

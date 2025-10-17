@@ -9,13 +9,18 @@ import {
 
 @Injectable()
 export class OrdersService {
-  async create(dto: OrderCreateDto) {}
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async create(_dto: OrderCreateDto) {}
 
-  async get(dto: OrderIdDto) {}
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async get(_dto: OrderIdDto) {}
 
-  async listByUser(dto: OrderListByUserDto) {}
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async listByUser(_dto: OrderListByUserDto) {}
 
-  async updateStatus(dto: OrderUpdateStatusDto) {}
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async updateStatus(_dto: OrderUpdateStatusDto) {}
 
-  async cancel(dto: OrderCancelDto) {}
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async cancel(_dto: OrderCancelDto) {}
 }
