@@ -21,6 +21,16 @@
     "noImplicitAny": false,
     "strictBindCallApply": false,
     "noFallthroughCasesInSwitch": false,
-    "paths": {}
+    "paths": {
+      "@shared/*": ["libs/shared/*"],
+      "@ar-app/*": ["apps/ar-app/src/*"],
+      "@cart-app/*": ["apps/cart-app/src/*"],
+      "@gateway/*": ["apps/gateway/src/*"],
+      "@order-app/*": ["apps/order-app/src/*"],
+      "@payment-app/*": ["apps/payment-app/src/*"],
+      "@product-app/*": ["apps/product-app/src/*"],
+      "@report-app/*": ["apps/report-app/src/*"],
+      "@user-app/*": ["apps/user-app/src/*"]
+    }
   }
 }

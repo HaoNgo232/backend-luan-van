@@ -81,6 +81,14 @@
       "compilerOptions": {
         "tsConfigPath": "apps/user-app/tsconfig.app.json"
       }
+    },
+    "shared": {
+      "type": "library",
+      "root": "libs/shared",
+      "sourceRoot": "libs/shared",
+      "compilerOptions": {
+        "tsConfigPath": "libs/shared/tsconfig.lib.json"
+      }
     }
   }
 }
