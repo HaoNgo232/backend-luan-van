@@ -1,0 +1,29 @@
+import { Controller } from '@nestjs/common';
+import { MessagePattern, Payload } from '@nestjs/microservices';
+import { OrderItemService } from './order-item.service';
+import { EVENTS } from '../../../../libs/shared/events';
+import {
+  OrderItemListByOrderDto,
+  OrderItemAddDto,
+  OrderItemRemoveDto,
+} from '../../../../libs/shared/dto/order.dto';
+
+@Controller()
+export class OrderItemController {
+  constructor(private readonly orderItemService: OrderItemService) {}
+
+  @MessagePattern(EVENTS.ORDER_ITEM.LIST_BY_ORDER)
+  listByOrder(@Payload() dto: OrderItemListByOrderDto) {
+    return this.orderItemService.listByOrder(dto);
+  }
+
+  @MessagePattern(EVENTS.ORDER_ITEM.ADD_ITEM)
+  addItem(@Payload() dto: OrderItemAddDto) {
+    return this.orderItemService.addItem(dto);
+  }
+
+  @MessagePattern(EVENTS.ORDER_ITEM.REMOVE_ITEM)
+  removeItem(@Payload() dto: OrderItemRemoveDto) {
+    return this.orderItemService.removeItem(dto);
+  }
+}
