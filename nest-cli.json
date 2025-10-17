@@ -10,6 +10,15 @@
   "monorepo": true,
   "root": "apps/gateway",
   "projects": {
+    "ar-app": {
+      "type": "application",
+      "root": "apps/ar-app",
+      "entryFile": "main",
+      "sourceRoot": "apps/ar-app/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/ar-app/tsconfig.app.json"
+      }
+    },
     "cart-app": {
       "type": "application",
       "root": "apps/cart-app",
@@ -53,6 +62,15 @@
       "sourceRoot": "apps/product-app/src",
       "compilerOptions": {
         "tsConfigPath": "apps/product-app/tsconfig.app.json"
+      }
+    },
+    "report-app": {
+      "type": "application",
+      "root": "apps/report-app",
+      "entryFile": "main",
+      "sourceRoot": "apps/report-app/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/report-app/tsconfig.app.json"
       }
     },
     "user-app": {
