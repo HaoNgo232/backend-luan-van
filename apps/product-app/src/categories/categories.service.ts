@@ -5,7 +5,7 @@ import {
   CategoryIdDto,
   CategorySlugDto,
   CategoryListQueryDto,
-} from '../../../../libs/shared/dto/category.dto';
+} from '@shared/dto/category.dto';
 
 @Injectable()
 export class CategoriesService {

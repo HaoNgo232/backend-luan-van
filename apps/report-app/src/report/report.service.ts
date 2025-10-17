@@ -3,7 +3,7 @@ import {
   SalesSummaryDto,
   ProductPerformanceDto,
   UserCohortDto,
-} from '../../../../libs/shared/dto/report.dto';
+} from '@shared/dto/report.dto';
 
 @Injectable()
 export class ReportService {

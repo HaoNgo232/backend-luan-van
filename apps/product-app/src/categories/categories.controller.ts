@@ -1,14 +1,14 @@
 import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
-import { CategoriesService } from './categories.service';
-import { EVENTS } from '../../../../libs/shared/events';
+import { CategoriesService } from '@product-app/categories/categories.service';
+import { EVENTS } from '@shared/events';
 import {
   CategoryCreateDto,
   CategoryUpdateDto,
   CategoryIdDto,
   CategorySlugDto,
   CategoryListQueryDto,
-} from '../../../../libs/shared/dto/category.dto';
+} from '@shared/dto/category.dto';
 
 @Controller()
 export class CategoriesController {

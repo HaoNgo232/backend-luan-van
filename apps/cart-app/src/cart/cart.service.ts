@@ -5,7 +5,7 @@ import {
   CartRemoveItemDto,
   CartClearDto,
   CartTransferToUserDto,
-} from '../../../../libs/shared/dto/cart.dto';
+} from '@shared/dto/cart.dto';
 
 @Injectable()
 export class CartService {

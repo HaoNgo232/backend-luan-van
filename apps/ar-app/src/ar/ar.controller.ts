@@ -1,11 +1,8 @@
 import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
-import { ArService } from './ar.service';
-import { EVENTS } from '../../../../libs/shared/events';
-import {
-  ARSnapshotCreateDto,
-  ARSnapshotListDto,
-} from '../../../../libs/shared/dto/ar.dto';
+import { ArService } from '@ar-app/ar/ar.service';
+import { EVENTS } from '@shared/events';
+import { ARSnapshotCreateDto, ARSnapshotListDto } from '@shared/dto/ar.dto';
 
 @Controller()
 export class ArController {

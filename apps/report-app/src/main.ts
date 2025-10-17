@@ -1,4 +1,4 @@
-import { ReportAppModule } from './report-app.module';
+import { ReportAppModule } from '@report-app/report-app.module';
 import { NestFactory } from '@nestjs/core';
 import { Transport, MicroserviceOptions } from '@nestjs/microservices';
 

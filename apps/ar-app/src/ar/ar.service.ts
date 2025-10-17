@@ -1,8 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import {
-  ARSnapshotCreateDto,
-  ARSnapshotListDto,
-} from '../../../../libs/shared/dto/ar.dto';
+import { ARSnapshotCreateDto, ARSnapshotListDto } from '@shared/dto/ar.dto';
 
 @Injectable()
 export class ArService {

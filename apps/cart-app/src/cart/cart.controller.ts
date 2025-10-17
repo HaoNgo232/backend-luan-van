@@ -1,14 +1,14 @@
 import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
-import { CartService } from './cart.service';
-import { EVENTS } from '../../../../libs/shared/events';
+import { CartService } from '@cart-app/cart/cart.service';
+import { EVENTS } from '@shared/events';
 import {
   CartGetDto,
   CartAddItemDto,
   CartRemoveItemDto,
   CartClearDto,
   CartTransferToUserDto,
-} from '../../../../libs/shared/dto/cart.dto';
+} from '@shared/dto/cart.dto';
 
 @Controller()
 export class CartController {

@@ -1,7 +1,7 @@
 import { Controller, Get, Inject, Query } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
-import { AppService } from './app.service';
-import { EVENTS } from '../../../libs/shared/events';
+import { AppService } from '@gateway/app.service';
+import { EVENTS } from '@shared/events';
 import { firstValueFrom } from 'rxjs';
 import { timeout, retry } from 'rxjs/operators';
 

@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { ReportModule } from './report/report.module';
+import { ReportModule } from '@report-app/report/report.module';
 
 @Module({
   imports: [ReportModule],

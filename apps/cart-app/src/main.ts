@@ -1,5 +1,5 @@
 import { NestFactory } from '@nestjs/core';
-import { CartAppModule } from './cart-app.module';
+import { CartAppModule } from '@cart-app/cart-app.module';
 import { Transport, MicroserviceOptions } from '@nestjs/microservices';
 
 async function bootstrap() {

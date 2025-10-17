@@ -1,7 +1,7 @@
 import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
-import { ProductsService } from './products.service';
-import { EVENTS } from '../../../../libs/shared/events';
+import { ProductsService } from '@product-app/products/products.service';
+import { EVENTS } from '@shared/events';
 import {
   ProductCreateDto,
   ProductUpdateDto,
@@ -9,7 +9,7 @@ import {
   ProductIdDto,
   ProductSlugDto,
   StockChangeDto,
-} from '../../../../libs/shared/dto/product.dto';
+} from '@shared/dto/product.dto';
 
 @Controller()
 export class ProductsController {

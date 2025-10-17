@@ -1,12 +1,8 @@
 import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
-import { AuthService } from './auth.service';
-import { EVENTS } from '../../../../libs/shared/events';
-import {
-  LoginDto,
-  VerifyDto,
-  RefreshDto,
-} from '../../../../libs/shared/dto/auth.dto';
+import { AuthService } from '@user-app/auth/auth.service';
+import { EVENTS } from '@shared/events';
+import { LoginDto, VerifyDto, RefreshDto } from '@shared/dto/auth.dto';
 
 @Controller()
 export class AuthController {

@@ -5,7 +5,7 @@ import {
   OrderListByUserDto,
   OrderUpdateStatusDto,
   OrderCancelDto,
-} from '../../../../libs/shared/dto/order.dto';
+} from '@shared/dto/order.dto';
 
 @Injectable()
 export class OrdersService {

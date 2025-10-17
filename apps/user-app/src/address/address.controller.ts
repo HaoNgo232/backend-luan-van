@@ -1,12 +1,12 @@
 import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
-import { AddressService } from './address.service';
-import { EVENTS } from '../../../../libs/shared/events';
+import { AddressService } from '@user-app/address/address.service';
+import { EVENTS } from '@shared/events';
 import {
   AddressCreateDto,
   AddressUpdateDto,
   AddressListByUserDto,
-} from '../../../../libs/shared/dto/address.dto';
+} from '@shared/dto/address.dto';
 
 @Controller()
 export class AddressController {

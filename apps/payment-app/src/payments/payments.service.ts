@@ -4,7 +4,7 @@ import {
   PaymentVerifyDto,
   PaymentIdDto,
   PaymentByOrderDto,
-} from '../../../../libs/shared/dto/payment.dto';
+} from '@shared/dto/payment.dto';
 
 @Injectable()
 export class PaymentsService {

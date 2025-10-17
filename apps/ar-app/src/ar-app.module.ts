@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { ArModule } from './ar/ar.module';
+import { ArModule } from '@ar-app/ar/ar.module';
 
 @Module({
   imports: [ArModule],

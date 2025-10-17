@@ -1,12 +1,12 @@
 import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
-import { OrderItemService } from './order-item.service';
-import { EVENTS } from '../../../../libs/shared/events';
+import { OrderItemService } from '@order-app/order-item/order-item.service';
+import { EVENTS } from '@shared/events';
 import {
   OrderItemListByOrderDto,
   OrderItemAddDto,
   OrderItemRemoveDto,
-} from '../../../../libs/shared/dto/order.dto';
+} from '@shared/dto/order.dto';
 
 @Controller()
 export class OrderItemController {

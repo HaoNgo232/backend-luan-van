@@ -3,7 +3,7 @@ import {
   AddressCreateDto,
   AddressUpdateDto,
   AddressListByUserDto,
-} from '../../../../libs/shared/dto/address.dto';
+} from '@shared/dto/address.dto';
 
 @Injectable()
 export class AddressService {

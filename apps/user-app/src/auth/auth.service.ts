@@ -1,9 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import {
-  LoginDto,
-  VerifyDto,
-  RefreshDto,
-} from '../../../../libs/shared/dto/auth.dto';
+import { LoginDto, VerifyDto, RefreshDto } from '@shared/dto/auth.dto';
 
 @Injectable()
 export class AuthService {

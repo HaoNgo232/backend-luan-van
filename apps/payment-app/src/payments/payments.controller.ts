@@ -1,13 +1,13 @@
 import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
-import { PaymentsService } from './payments.service';
-import { EVENTS } from '../../../../libs/shared/events';
+import { PaymentsService } from '@payment-app/payments/payments.service';
+import { EVENTS } from '@shared/events';
 import {
   PaymentProcessDto,
   PaymentVerifyDto,
   PaymentIdDto,
   PaymentByOrderDto,
-} from '../../../../libs/shared/dto/payment.dto';
+} from '@shared/dto/payment.dto';
 
 @Controller()
 export class PaymentsController {

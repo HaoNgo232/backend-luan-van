@@ -6,7 +6,7 @@ import {
   ProductIdDto,
   ProductSlugDto,
   StockChangeDto,
-} from '../../../../libs/shared/dto/product.dto';
+} from '@shared/dto/product.dto';
 
 @Injectable()
 export class ProductsService {

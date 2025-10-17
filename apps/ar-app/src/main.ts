@@ -1,5 +1,5 @@
 import { NestFactory } from '@nestjs/core';
-import { ArAppModule } from './ar-app.module';
+import { ArAppModule } from '@ar-app/ar-app.module';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 
 async function bootstrap() {

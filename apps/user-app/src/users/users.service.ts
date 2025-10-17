@@ -3,7 +3,7 @@ import {
   CreateUserDto,
   UpdateUserDto,
   ListUsersDto,
-} from '../../../../libs/shared/dto/user.dto';
+} from '@shared/dto/user.dto';
 
 @Injectable()
 export class UsersService {
