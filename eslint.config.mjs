@@ -60,7 +60,7 @@ export default tseslint.config(
       '@typescript-eslint/no-empty-object-type': 'off',
       'prettier/prettier': 'error',
       eqeqeq: ['error', 'always'],
-      'no-console': 'warn',
+      'no-console': 'off',
       'no-var': 'error',
       'prefer-const': 'error',
     },

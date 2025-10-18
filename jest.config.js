@@ -1,3 +1,6 @@
+// Load test environment variables before running tests
+require('dotenv').config({ path: '.env.test' });
+
 module.exports = {
   testEnvironment: 'node',
   preset: 'ts-jest',
@@ -26,4 +29,5 @@ module.exports = {
   transform: {
     '^.+\\.(t|j)s$': 'ts-jest',
   },
+  setupFilesAfterEnv: ['<rootDir>/test/setup.ts'],
 };
