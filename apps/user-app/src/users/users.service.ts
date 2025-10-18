@@ -8,34 +8,16 @@ import {
   UpdateUserDto,
   ListUsersDto,
 } from '@shared/dto/user.dto';
+import { UserResponse } from '@shared/types/user.types';
 import { prisma } from '@user-app/prisma/prisma.client';
 import * as bcrypt from 'bcryptjs';
 
 @Injectable()
 export class UsersService {
-  async findById(id: string): Promise<{
-    id: string;
-    email: string;
-    fullName: string | null;
-    phone: string | null;
-    role: string;
-    isActive: boolean;
-    createdAt: Date;
-    updatedAt: Date;
-  }> {
+  async findById(id: string): Promise<UserResponse> {
     try {
       const user = await prisma.user.findUnique({
         where: { id },
-        select: {
-          id: true,
-          email: true,
-          fullName: true,
-          phone: true,
-          role: true,
-          isActive: true,
-          createdAt: true,
-          updatedAt: true,
-        },
       });
 
       if (!user) {
@@ -52,19 +34,15 @@ export class UsersService {
     }
   }
 
-  async findByEmail(email: string): Promise<{
-    id: string;
-    email: string;
-    passwordHash: string;
-    fullName: string | null;
-    phone: string | null;
-    role: string;
-    isActive: boolean;
-  } | null> {
+  async findByEmail(email: string): Promise<UserResponse> {
     try {
       const user = await prisma.user.findUnique({
         where: { email },
       });
+
+      if (!user) {
+        throw new NotFoundException(`User with email ${email} not found`);
+      }
       return user;
     } catch (error) {
       console.error('[UsersService] findByEmail error:', error);
@@ -72,13 +50,7 @@ export class UsersService {
     }
   }
 
-  async create(dto: CreateUserDto): Promise<{
-    id: string;
-    email: string;
-    fullName: string | null;
-    phone: string | null;
-    role: string;
-  }> {
+  async create(dto: CreateUserDto): Promise<UserResponse> {
     try {
       // Check if user already exists
       const existingUser = await prisma.user.findUnique({
@@ -101,14 +73,11 @@ export class UsersService {
           phone: dto.phone,
           role: dto.role || 'CUSTOMER',
         },
-        select: {
-          id: true,
-          email: true,
-          fullName: true,
-          phone: true,
-          role: true,
-        },
       });
+
+      if (!user) {
+        throw new BadRequestException('Failed to create user');
+      }
 
       return user;
     } catch (error) {
@@ -120,17 +89,7 @@ export class UsersService {
     }
   }
 
-  async update(
-    id: string,
-    dto: UpdateUserDto,
-  ): Promise<{
-    id: string;
-    email: string;
-    fullName: string | null;
-    phone: string | null;
-    role: string;
-    isActive: boolean;
-  }> {
+  async update(id: string, dto: UpdateUserDto): Promise<UserResponse> {
     try {
       // Check if user exists
       const existingUser = await prisma.user.findUnique({
@@ -149,14 +108,6 @@ export class UsersService {
           phone: dto.phone,
           role: dto.role,
           isActive: dto.isActive,
-        },
-        select: {
-          id: true,
-          email: true,
-          fullName: true,
-          phone: true,
-          role: true,
-          isActive: true,
         },
       });
 
@@ -196,15 +147,7 @@ export class UsersService {
   }
 
   async list(query: ListUsersDto): Promise<{
-    users: Array<{
-      id: string;
-      email: string;
-      fullName: string | null;
-      phone: string | null;
-      role: string;
-      isActive: boolean;
-      createdAt: Date;
-    }>;
+    users: Array<UserResponse>;
     total: number;
     page: number;
     pageSize: number;
@@ -230,15 +173,6 @@ export class UsersService {
           where,
           skip,
           take: pageSize,
-          select: {
-            id: true,
-            email: true,
-            fullName: true,
-            phone: true,
-            role: true,
-            isActive: true,
-            createdAt: true,
-          },
           orderBy: { createdAt: 'desc' },
         }),
         prisma.user.count({ where }),
