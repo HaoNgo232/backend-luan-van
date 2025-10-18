@@ -1,0 +1,157 @@
+# docker-compose.yml
+version: '3.8'
+
+services:
+  # Message Queue
+  nats:
+    image: nats:latest
+    container_name: nats-server
+    ports:
+      - '4222:4222'
+    healthcheck:
+      test: ['CMD', 'nc', '-z', 'localhost', '4222']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # User Service Database
+  user_db:
+    image: postgres:16-alpine
+    container_name: user_db
+    restart: always
+    environment:
+      POSTGRES_DB: user_db
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: user_password
+    ports:
+      - '5433:5432'
+    volumes:
+      - user_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U user -d user_db']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Product Service Database
+  product_db:
+    image: postgres:16-alpine
+    container_name: product_db
+    restart: always
+    environment:
+      POSTGRES_DB: product_db
+      POSTGRES_USER: product
+      POSTGRES_PASSWORD: product_password
+    ports:
+      - '5434:5432'
+    volumes:
+      - product_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U product -d product_db']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Cart Service Database
+  cart_db:
+    image: postgres:16-alpine
+    container_name: cart_db
+    restart: always
+    environment:
+      POSTGRES_DB: cart_db
+      POSTGRES_USER: cart
+      POSTGRES_PASSWORD: cart_password
+    ports:
+      - '5435:5432'
+    volumes:
+      - cart_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U cart -d cart_db']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Order Service Database
+  order_db:
+    image: postgres:16-alpine
+    container_name: order_db
+    restart: always
+    environment:
+      POSTGRES_DB: order_db
+      POSTGRES_USER: order
+      POSTGRES_PASSWORD: order_password
+    ports:
+      - '5436:5432'
+    volumes:
+      - order_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U order -d order_db']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Payment Service Database
+  payment_db:
+    image: postgres:16-alpine
+    container_name: payment_db
+    restart: always
+    environment:
+      POSTGRES_DB: payment_db
+      POSTGRES_USER: payment
+      POSTGRES_PASSWORD: payment_password
+    ports:
+      - '5437:5432'
+    volumes:
+      - payment_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U payment -d payment_db']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # AR Service Database
+  ar_db:
+    image: postgres:16-alpine
+    container_name: ar_db
+    restart: always
+    environment:
+      POSTGRES_DB: ar_db
+      POSTGRES_USER: ar
+      POSTGRES_PASSWORD: ar_password
+    ports:
+      - '5438:5432'
+    volumes:
+      - ar_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ar -d ar_db']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Report Service Database
+  report_db:
+    image: postgres:16-alpine
+    container_name: report_db
+    restart: always
+    environment:
+      POSTGRES_DB: report_db
+      POSTGRES_USER: report
+      POSTGRES_PASSWORD: report_password
+    ports:
+      - '5439:5432'
+    volumes:
+      - report_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U report -d report_db']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  user_db_data:
+  product_db_data:
+  cart_db_data:
+  order_db_data:
+  payment_db_data:
+  ar_db_data:
+  report_db_data:
