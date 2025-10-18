@@ -24,13 +24,21 @@
     "paths": {
       "@shared/*": ["libs/shared/*"],
       "@ar-app/*": ["apps/ar-app/src/*"],
+      "@ar-app/prisma/*": ["apps/ar-app/prisma/*"],
       "@cart-app/*": ["apps/cart-app/src/*"],
+      "@cart-app/prisma/*": ["apps/cart-app/prisma/*"],
       "@gateway/*": ["apps/gateway/src/*"],
+      "@gateway/prisma/*": ["apps/gateway/prisma/*"],
       "@order-app/*": ["apps/order-app/src/*"],
+      "@order-app/prisma/*": ["apps/order-app/prisma/*"],
       "@payment-app/*": ["apps/payment-app/src/*"],
+      "@payment-app/prisma/*": ["apps/payment-app/prisma/*"],
       "@product-app/*": ["apps/product-app/src/*"],
+      "@product-app/prisma/*": ["apps/product-app/prisma/*"],
       "@report-app/*": ["apps/report-app/src/*"],
-      "@user-app/*": ["apps/user-app/src/*"]
+      "@report-app/prisma/*": ["apps/report-app/prisma/*"],
+      "@user-app/*": ["apps/user-app/src/*"],
+      "@user-app/prisma/*": ["apps/user-app/prisma/*"]
     }
   }
 }

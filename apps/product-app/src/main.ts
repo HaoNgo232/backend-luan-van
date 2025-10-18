@@ -1,8 +1,9 @@
 import { NestFactory } from '@nestjs/core';
 import { Transport, MicroserviceOptions } from '@nestjs/microservices';
 import { ProductAppModule } from '@product-app/product-app.module';
+import { PrismaService } from '@product-app/prisma/prisma.service';
 
-async function bootstrap() {
+async function bootstrap(): Promise<void> {
   const app = await NestFactory.createMicroservice<MicroserviceOptions>(
     ProductAppModule,
     {
@@ -13,6 +14,8 @@ async function bootstrap() {
       },
     },
   );
+  const prismaService = app.get(PrismaService);
+  await prismaService.enableShutdownHooks(app);
   await app.listen();
 }
 void bootstrap();

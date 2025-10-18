@@ -1,7 +1,8 @@
+/* eslint-disable @typescript-eslint/explicit-function-return-type */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 
 import { Controller, Get, Inject, Query } from '@nestjs/common';
-import { ClientProxy } from '@nestjs/microservices';
+import { ClientProxy, NatsRecordBuilder } from '@nestjs/microservices';
 import { AppService } from '@gateway/app.service';
 import { EVENTS } from '@shared/events';
 import { firstValueFrom } from 'rxjs';
@@ -18,9 +19,13 @@ export class AppController {
 
   @Get('users/by-id')
   async getUserById(@Query('id') id: string) {
+    const record = new NatsRecordBuilder(id)
+      .setHeaders({ authorization: `Bearer ${'token'}` })
+      .build();
+
     return firstValueFrom(
       this.userService
-        .send(EVENTS.USER.FIND_BY_ID, id)
+        .send(EVENTS.USER.FIND_BY_ID, record)
         .pipe(timeout(5000), retry(1)),
     );
   }

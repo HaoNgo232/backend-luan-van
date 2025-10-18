@@ -4,12 +4,15 @@ version: '3.8'
 services:
   # Message Queue
   nats:
-    image: nats:latest
+    image: nats:2.10-alpine
     container_name: nats-server
+    command: ['-p', '4222', '-m', '8222']
     ports:
       - '4222:4222'
+      - '8222:8222'
     healthcheck:
-      test: ['CMD', 'nc', '-z', 'localhost', '4222']
+      test:
+        ['CMD-SHELL', 'wget -qO- http://localhost:8222/varz | grep -q uptime']
       interval: 10s
       timeout: 5s
       retries: 5

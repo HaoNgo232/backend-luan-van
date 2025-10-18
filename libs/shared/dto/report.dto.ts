@@ -4,12 +4,12 @@ export class DateRangeDto {
   @IsNotEmpty()
   @IsString()
   @IsDateString()
-  from: string;
+  fromAt: string;
 
   @IsNotEmpty()
   @IsString()
   @IsDateString()
-  to: string;
+  toAt: string;
 }
 
 export class SalesSummaryDto extends DateRangeDto {}

@@ -12,7 +12,7 @@ model ReportEntry {
   id        String   @id @default(cuid())
   type      String
   payload   Json?
-  from      DateTime?
-  to        DateTime?
+  fromAt    DateTime?
+  toAt      DateTime?
   createdAt DateTime @default(now())
 }
