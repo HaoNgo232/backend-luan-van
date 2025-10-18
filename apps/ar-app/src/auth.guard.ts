@@ -11,7 +11,6 @@ export class AuthGuard implements CanActivate {
       message !== null &&
       'headers' in message
     ) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
       const token = verifyJwtFromHeader(
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         message.headers as Record<string, string>,
