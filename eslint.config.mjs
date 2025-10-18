@@ -11,6 +11,9 @@ export default tseslint.config(
       '**/generated/**',
       '**/dist/**',
       '**/build/**',
+      'jest.config.js',
+      'jest.unit.js',
+      'jest.e2e.js',
     ],
   },
   eslint.configs.recommended,
@@ -33,6 +36,17 @@ export default tseslint.config(
     files: ['**/*.controller.ts', '**/main.ts'],
     rules: {
       '@typescript-eslint/explicit-function-return-type': 'off',
+    },
+  },
+  {
+    files: ['**/*.spec.ts', '**/*.e2e-spec.ts', '**/test/**/*.ts'],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-unsafe-argument': 'off',
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+      '@typescript-eslint/no-unsafe-member-access': 'off',
+      '@typescript-eslint/no-unsafe-call': 'off',
+      '@typescript-eslint/no-unsafe-function-type': 'off',
     },
   },
   {
