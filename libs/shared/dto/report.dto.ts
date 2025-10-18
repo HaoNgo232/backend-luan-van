@@ -1,5 +1,14 @@
+import { IsNotEmpty, IsString, IsDateString } from 'class-validator';
+
 export class DateRangeDto {
+  @IsNotEmpty()
+  @IsString()
+  @IsDateString()
   from: string;
+
+  @IsNotEmpty()
+  @IsString()
+  @IsDateString()
   to: string;
 }
 

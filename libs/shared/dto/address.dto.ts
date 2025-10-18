@@ -1,24 +1,69 @@
+import { IsBoolean, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 export class AddressCreateDto {
+  @IsNotEmpty()
+  @IsString()
   userId: string;
+
+  @IsNotEmpty()
+  @IsString()
   fullName: string;
+
+  @IsNotEmpty()
+  @IsString()
   phone: string;
+
+  @IsNotEmpty()
+  @IsString()
   street: string;
+
+  @IsNotEmpty()
+  @IsString()
   ward: string;
+
+  @IsNotEmpty()
+  @IsString()
   district: string;
+
+  @IsNotEmpty()
+  @IsString()
   city: string;
+
+  @IsBoolean()
   isDefault?: boolean;
 }
 
 export class AddressUpdateDto {
+  @IsOptional()
+  @IsString()
   fullName?: string;
+
+  @IsOptional()
+  @IsString()
   phone?: string;
+
+  @IsOptional()
+  @IsString()
   street?: string;
+
+  @IsOptional()
+  @IsString()
   ward?: string;
+
+  @IsOptional()
+  @IsString()
   district?: string;
+
+  @IsOptional()
+  @IsString()
   city?: string;
+
+  @IsOptional()
+  @IsBoolean()
   isDefault?: boolean;
 }
 
 export class AddressListByUserDto {
+  @IsNotEmpty()
+  @IsString()
   userId: string;
 }

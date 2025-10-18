@@ -18,14 +18,10 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./apps/gateway/test/jest-e2e.json",
-    "db:generate:user": "prisma generate --schema=apps/user-app/prisma/schema.prisma",
-    "db:generate:order": "prisma generate --schema=apps/order-app/prisma/schema.prisma",
-    "db:generate:product": "prisma generate --schema=apps/product-app/prisma/schema.prisma",
-    "db:generate:cart": "prisma generate --schema=apps/cart-app/prisma/schema.prisma",
-    "db:generate:payment": "prisma generate --schema=apps/payment-app/prisma/schema.prisma",
-    "db:generate:report": "prisma generate --schema=apps/report-app/prisma/schema.prisma",
-    "db:generate:ar": "prisma generate --schema=apps/ar-app/prisma/schema.prisma",
-    "db:generate:all": "pnpm db:generate:user && pnpm db:generate:order && pnpm db:generate:product && pnpm db:generate:cart && pnpm db:generate:payment && pnpm db:generate:report && pnpm db:generate:ar"
+    "db:generate:all": "prisma generate --schema=apps/user-app/prisma/schema.prisma && prisma generate --schema=apps/order-app/prisma/schema.prisma && prisma generate --schema=apps/product-app/prisma/schema.prisma && prisma generate --schema=apps/cart-app/prisma/schema.prisma && prisma generate --schema=apps/payment-app/prisma/schema.prisma && prisma generate --schema=apps/report-app/prisma/schema.prisma && prisma generate --schema=apps/ar-app/prisma/schema.prisma",
+    "db:push:all": "prisma db push --schema=apps/user-app/prisma/schema.prisma && prisma db push --schema=apps/order-app/prisma/schema.prisma && prisma db push --schema=apps/product-app/prisma/schema.prisma && prisma db push --schema=apps/cart-app/prisma/schema.prisma && prisma db push --schema=apps/payment-app/prisma/schema.prisma && prisma db push --schema=apps/report-app/prisma/schema.prisma && prisma db push --schema=apps/ar-app/prisma/schema.prisma",
+    "db:migrate:all": "prisma migrate dev --schema=apps/user-app/prisma/schema.prisma && prisma migrate dev --schema=apps/order-app/prisma/schema.prisma && prisma migrate dev --schema=apps/product-app/prisma/schema.prisma && prisma migrate dev --schema=apps/cart-app/prisma/schema.prisma && prisma migrate dev --schema=apps/payment-app/prisma/schema.prisma && prisma migrate dev --schema=apps/report-app/prisma/schema.prisma && prisma migrate dev --schema=apps/ar-app/prisma/schema.prisma",
+    "db:reset:all": "prisma migrate reset --schema=apps/user-app/prisma/schema.prisma && prisma migrate reset --schema=apps/order-app/prisma/schema.prisma && prisma migrate reset --schema=apps/product-app/prisma/schema.prisma && prisma migrate reset --schema=apps/cart-app/prisma/schema.prisma && prisma migrate reset --schema=apps/payment-app/prisma/schema.prisma && prisma migrate reset --schema=apps/report-app/prisma/schema.prisma && prisma migrate reset --schema=apps/ar-app/prisma/schema.prisma"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
