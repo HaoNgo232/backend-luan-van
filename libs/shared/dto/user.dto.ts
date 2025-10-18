@@ -1,3 +1,4 @@
+import { Type } from 'class-transformer';
 import {
   IsNotEmpty,
   IsOptional,
@@ -33,7 +34,7 @@ export class CreateUserDto {
   phone?: string;
 
   @IsOptional()
-  @IsEnum(['ADMIN', 'CUSTOMER'])
+  @IsEnum(UserRole)
   role?: 'ADMIN' | 'CUSTOMER';
 }
 
@@ -63,6 +64,7 @@ export class ListUsersDto {
 
   @IsOptional()
   @IsNumber()
+  @Type(() => Number)
   @IsPositive()
   pageSize?: number;
 

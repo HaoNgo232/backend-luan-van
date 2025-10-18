@@ -1,3 +1,4 @@
+import { Type } from 'class-transformer';
 import {
   IsNotEmpty,
   IsOptional,
@@ -7,6 +8,7 @@ import {
   IsArray,
   IsUrl,
   Min,
+  IsObject,
 } from 'class-validator';
 
 export class ProductCreateDto {
@@ -24,11 +26,13 @@ export class ProductCreateDto {
 
   @IsNotEmpty()
   @IsNumber()
+  @Type(() => Number)
   @IsPositive()
   price: number;
 
   @IsOptional()
   @IsNumber()
+  @Type(() => Number)
   @Min(0)
   stock?: number;
 
@@ -46,7 +50,8 @@ export class ProductCreateDto {
   categoryId?: string;
 
   @IsOptional()
-  attributes?: any;
+  @IsObject()
+  attributes?: Record<string, unknown>;
 
   @IsOptional()
   @IsUrl()
@@ -64,11 +69,13 @@ export class ProductUpdateDto {
 
   @IsOptional()
   @IsNumber()
+  @Type(() => Number)
   @IsPositive()
   price?: number;
 
   @IsOptional()
   @IsNumber()
+  @Type(() => Number)
   @Min(0)
   stock?: number;
 
@@ -86,7 +93,8 @@ export class ProductUpdateDto {
   categoryId?: string;
 
   @IsOptional()
-  attributes?: any;
+  @IsObject()
+  attributes?: Record<string, unknown>;
 
   @IsOptional()
   @IsUrl()
@@ -101,6 +109,7 @@ export class ProductListQueryDto {
 
   @IsOptional()
   @IsNumber()
+  @Type(() => Number)
   @IsPositive()
   pageSize?: number;
 
@@ -114,11 +123,13 @@ export class ProductListQueryDto {
 
   @IsOptional()
   @IsNumber()
+  @Type(() => Number)
   @Min(0)
   minPrice?: number;
 
   @IsOptional()
   @IsNumber()
+  @Type(() => Number)
   @Min(0)
   maxPrice?: number;
 }
@@ -142,5 +153,7 @@ export class StockChangeDto {
 
   @IsNotEmpty()
   @IsNumber()
+  @Type(() => Number)
+  @IsPositive()
   quantity: number;
 }

@@ -25,11 +25,13 @@ class OrderItemDto {
 
   @IsNotEmpty()
   @IsNumber()
+  @Type(() => Number)
   @IsPositive()
   quantity: number;
 
   @IsNotEmpty()
   @IsNumber()
+  @Type(() => Number)
   @IsPositive()
   price: number;
 }
@@ -63,11 +65,13 @@ export class OrderListByUserDto {
 
   @IsOptional()
   @IsNumber()
+  @Type(() => Number)
   @Min(1)
   page?: number;
 
   @IsOptional()
   @IsNumber()
+  @Type(() => Number)
   @IsPositive()
   pageSize?: number;
 }
@@ -103,11 +107,13 @@ export class OrderItemAddDto {
 
   @IsNotEmpty()
   @IsNumber()
+  @Type(() => Number)
   @IsPositive()
   quantity: number;
 
   @IsNotEmpty()
   @IsNumber()
+  @Type(() => Number)
   @IsPositive()
   price: number;
 }

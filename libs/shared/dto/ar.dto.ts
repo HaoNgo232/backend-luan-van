@@ -1,3 +1,4 @@
+import { Type } from 'class-transformer';
 import {
   IsNotEmpty,
   IsOptional,
@@ -38,11 +39,14 @@ export class ARSnapshotListDto {
 
   @IsOptional()
   @IsNumber()
+  @Type(() => Number)
   @Min(1)
   page?: number;
 
   @IsOptional()
   @IsNumber()
+  @Type(() => Number)
+  @Min(1)
   @IsPositive()
   pageSize?: number;
 }

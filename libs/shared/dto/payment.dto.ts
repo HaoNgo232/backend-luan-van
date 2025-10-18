@@ -1,9 +1,11 @@
+import { Type } from 'class-transformer';
 import {
   IsNotEmpty,
   IsString,
   IsEnum,
   IsNumber,
   IsPositive,
+  IsObject,
 } from 'class-validator';
 
 export enum PaymentMethod {
@@ -28,6 +30,7 @@ export class PaymentProcessDto {
 
   @IsNotEmpty()
   @IsNumber()
+  @Type(() => Number)
   @IsPositive()
   amount: number;
 }
@@ -38,6 +41,7 @@ export class PaymentVerifyDto {
   orderId: string;
 
   @IsNotEmpty()
+  @IsObject()
   payload: Record<string, unknown>;
 }
 

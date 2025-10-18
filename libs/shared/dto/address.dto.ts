@@ -29,6 +29,7 @@ export class AddressCreateDto {
   city: string;
 
   @IsBoolean()
+  @IsOptional()
   isDefault?: boolean;
 }
 

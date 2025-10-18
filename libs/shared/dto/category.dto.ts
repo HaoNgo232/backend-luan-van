@@ -6,6 +6,7 @@ import {
   IsPositive,
   Min,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class CategoryCreateDto {
   @IsNotEmpty()
@@ -58,11 +59,14 @@ export class CategorySlugDto {
 export class CategoryListQueryDto {
   @IsOptional()
   @IsNumber()
+  @Type(() => Number)
   @Min(1)
   page?: number;
 
   @IsOptional()
   @IsNumber()
+  @Type(() => Number)
+  @Min(1)
   @IsPositive()
   pageSize?: number;
 

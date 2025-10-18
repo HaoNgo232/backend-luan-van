@@ -4,7 +4,9 @@ import {
   IsOptional,
   IsNumber,
   IsPositive,
+  Min,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class CartGetDto {
   @IsNotEmpty()
@@ -23,6 +25,8 @@ export class CartAddItemDto {
 
   @IsOptional()
   @IsNumber()
+  @Type(() => Number)
+  @Min(1)
   @IsPositive()
   quantity?: number;
 }
