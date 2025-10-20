@@ -33,7 +33,7 @@ class OrderItemDto {
   @IsNumber()
   @Type(() => Number)
   @IsPositive()
-  price: number;
+  priceInt: number; // Price snapshot in cents
 }
 
 export class OrderCreateDto {
@@ -115,7 +115,7 @@ export class OrderItemAddDto {
   @IsNumber()
   @Type(() => Number)
   @IsPositive()
-  price: number;
+  priceInt: number; // Price in cents
 }
 
 export class OrderItemRemoveDto {

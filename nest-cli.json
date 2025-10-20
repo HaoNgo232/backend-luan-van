@@ -86,6 +86,7 @@
       "type": "library",
       "root": "libs/shared",
       "sourceRoot": "libs/shared",
+      "entryFile": "main",
       "compilerOptions": {
         "tsConfigPath": "libs/shared/tsconfig.lib.json"
       }

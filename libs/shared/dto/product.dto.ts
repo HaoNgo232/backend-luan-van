@@ -28,7 +28,7 @@ export class ProductCreateDto {
   @IsNumber()
   @Type(() => Number)
   @IsPositive()
-  price: number;
+  priceInt: number; // Stored in cents (e.g., 1999 = $19.99)
 
   @IsOptional()
   @IsNumber()
@@ -71,7 +71,7 @@ export class ProductUpdateDto {
   @IsNumber()
   @Type(() => Number)
   @IsPositive()
-  price?: number;
+  priceInt?: number; // Stored in cents
 
   @IsOptional()
   @IsNumber()
@@ -125,13 +125,13 @@ export class ProductListQueryDto {
   @IsNumber()
   @Type(() => Number)
   @Min(0)
-  minPrice?: number;
+  minPriceInt?: number; // Price in cents
 
   @IsOptional()
   @IsNumber()
   @Type(() => Number)
   @Min(0)
-  maxPrice?: number;
+  maxPriceInt?: number; // Price in cents
 }
 
 export class ProductIdDto {

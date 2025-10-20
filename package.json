@@ -47,6 +47,7 @@
     "@nestjs/mapped-types": "*",
     "@nestjs/microservices": "^11.1.6",
     "@nestjs/platform-express": "^11.0.1",
+    "@nestjs/terminus": "^11.0.0",
     "@prisma/client": "^6.17.1",
     "bcryptjs": "^3.0.2",
     "class-transformer": "^0.5.1",
@@ -120,5 +121,6 @@
         "useESM": true
       }
     }
-  }
+  },
+  "packageManager": "pnpm@10.18.3+sha512.bbd16e6d7286fd7e01f6b3c0b3c932cda2965c06a908328f74663f10a9aea51f1129eea615134bf992831b009eabe167ecb7008b597f40ff9bc75946aadfb08d"
 }

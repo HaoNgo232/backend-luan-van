@@ -1,4 +1,5 @@
 import * as jwt from 'jsonwebtoken';
+import type { SignOptions } from 'jsonwebtoken';
 
 export interface JwtPayload {
   userId: string;
@@ -64,7 +65,8 @@ export function generateJwt(
     throw new Error('JWT_SECRET_KEY not configured');
   }
 
-  return jwt.sign(payload, secret, { expiresIn });
+  const options: SignOptions = { expiresIn: Number(expiresIn) };
+  return jwt.sign(payload, secret, options);
 }
 
 /**

@@ -32,7 +32,7 @@ export class PaymentProcessDto {
   @IsNumber()
   @Type(() => Number)
   @IsPositive()
-  amount: number;
+  amountInt: number; // Amount in cents
 }
 
 export class PaymentVerifyDto {

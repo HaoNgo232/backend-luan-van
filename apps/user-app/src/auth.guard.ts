@@ -1,24 +1,56 @@
-import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
-import { verifyJwtFromHeader } from '@shared/auth';
+import {
+  CanActivate,
+  ExecutionContext,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { verifyJwtFromHeader, JwtPayload } from '@shared/auth';
+import { PrismaService } from '@user-app/prisma/prisma.service';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
-  canActivate(context: ExecutionContext): boolean {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    const message = context.switchToRpc().getData();
-    if (
-      typeof message === 'object' &&
-      message !== null &&
-      'headers' in message
-    ) {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async canActivate(context: ExecutionContext): Promise<boolean> {
+    try {
+      const message: Record<string, unknown> = context.switchToRpc().getData();
+
+      if (
+        typeof message !== 'object' ||
+        message === null ||
+        !('headers' in message)
+      ) {
+        throw new UnauthorizedException('Invalid request format');
+      }
+
       const token = verifyJwtFromHeader(
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         message.headers as Record<string, string>,
       );
-      if (token) {
-        return true;
+
+      if (!token) {
+        throw new UnauthorizedException('Invalid or missing token');
       }
+
+      // Verify user exists and is active in database
+      const user = await this.prisma.user.findUnique({
+        where: { id: token.userId },
+        select: { id: true, isActive: true, role: true },
+      });
+
+      if (!user || !user.isActive) {
+        throw new UnauthorizedException('User not found or inactive');
+      }
+
+      // Attach user to message for use in handlers
+      message.user = token;
+
+      return true;
+    } catch (error) {
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+      console.error('[AuthGuard] Verification error:', error);
+      throw new UnauthorizedException('Authentication failed');
     }
-    return false;
   }
 }
