@@ -1,4 +1,5 @@
 import { IsBoolean, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+
 export class AddressCreateDto {
   @IsNotEmpty()
   @IsString()
@@ -64,6 +65,16 @@ export class AddressUpdateDto {
 }
 
 export class AddressListByUserDto {
+  @IsNotEmpty()
+  @IsString()
+  userId: string;
+}
+
+export class AddressSetDefaultDto {
+  @IsNotEmpty()
+  @IsString()
+  addressId: string;
+
   @IsNotEmpty()
   @IsString()
   userId: string;

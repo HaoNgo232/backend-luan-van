@@ -139,6 +139,16 @@ export class UsersService {
           role: dto.role,
           isActive: dto.isActive,
         },
+        select: {
+          id: true,
+          email: true,
+          fullName: true,
+          phone: true,
+          role: true,
+          isActive: true,
+          createdAt: true,
+          updatedAt: true,
+        },
       });
 
       return user;

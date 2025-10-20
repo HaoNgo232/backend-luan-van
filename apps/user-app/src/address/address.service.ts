@@ -1,17 +1,196 @@
-import { Injectable } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import {
   AddressCreateDto,
   AddressUpdateDto,
   AddressListByUserDto,
+  AddressSetDefaultDto,
 } from '@shared/dto/address.dto';
+import { AddressResponse } from '@shared/types/address.types';
+import { PrismaService } from '@user-app/prisma/prisma.service';
 
 @Injectable()
 export class AddressService {
-  async listByUser(_dto: AddressListByUserDto) {}
+  constructor(private readonly prisma: PrismaService) {}
 
-  async create(_dto: AddressCreateDto) {}
+  async listByUser(dto: AddressListByUserDto): Promise<AddressResponse[]> {
+    try {
+      const addresses = await this.prisma.address.findMany({
+        where: { userId: dto.userId },
+        orderBy: [{ isDefault: 'desc' }, { createdAt: 'desc' }],
+      });
 
-  async update(_id: string, _dto: AddressUpdateDto) {}
+      return addresses;
+    } catch (error) {
+      console.error('[AddressService] listByUser error:', error);
+      throw new BadRequestException('Không thể lấy danh sách địa chỉ');
+    }
+  }
 
-  async delete(_id: string) {}
+  async create(dto: AddressCreateDto): Promise<AddressResponse> {
+    try {
+      // Kiểm tra user có tồn tại không
+      const userExists = await this.prisma.user.findUnique({
+        where: { id: dto.userId },
+        select: { id: true },
+      });
+
+      if (!userExists) {
+        throw new NotFoundException(`Người dùng ${dto.userId} không tồn tại`);
+      }
+
+      // Nếu đây là địa chỉ mặc định, bỏ mặc định của các địa chỉ khác
+      if (dto.isDefault) {
+        await this.prisma.address.updateMany({
+          where: { userId: dto.userId },
+          data: { isDefault: false },
+        });
+      }
+
+      // Tạo địa chỉ mới
+      const address = await this.prisma.address.create({
+        data: {
+          userId: dto.userId,
+          fullName: dto.fullName,
+          phone: dto.phone,
+          street: dto.street,
+          ward: dto.ward,
+          district: dto.district,
+          city: dto.city,
+          isDefault: dto.isDefault ?? false,
+        },
+      });
+
+      return address;
+    } catch (error) {
+      if (error instanceof NotFoundException) throw error;
+      console.error('[AddressService] create error:', error);
+      throw new BadRequestException('Không thể tạo địa chỉ');
+    }
+  }
+
+  async update(id: string, dto: AddressUpdateDto): Promise<AddressResponse> {
+    try {
+      // Kiểm tra địa chỉ có tồn tại không
+      const existingAddress = await this.prisma.address.findUnique({
+        where: { id },
+        select: { id: true, userId: true },
+      });
+
+      if (!existingAddress) {
+        throw new NotFoundException(`Địa chỉ ${id} không tồn tại`);
+      }
+
+      // Nếu cập nhật thành địa chỉ mặc định, bỏ mặc định của các địa chỉ khác
+      if (dto.isDefault) {
+        await this.prisma.address.updateMany({
+          where: { userId: existingAddress.userId, id: { not: id } },
+          data: { isDefault: false },
+        });
+      }
+
+      // Cập nhật địa chỉ
+      const updatedAddress = await this.prisma.address.update({
+        where: { id },
+        data: {
+          fullName: dto.fullName,
+          phone: dto.phone,
+          street: dto.street,
+          ward: dto.ward,
+          district: dto.district,
+          city: dto.city,
+          isDefault: dto.isDefault,
+        },
+      });
+
+      return updatedAddress;
+    } catch (error) {
+      if (error instanceof NotFoundException) throw error;
+      console.error('[AddressService] update error:', error);
+      throw new BadRequestException('Không thể cập nhật địa chỉ');
+    }
+  }
+
+  async delete(id: string): Promise<{ success: boolean; message: string }> {
+    try {
+      // Kiểm tra địa chỉ có tồn tại không
+      const existingAddress = await this.prisma.address.findUnique({
+        where: { id },
+        select: { id: true, isDefault: true, userId: true },
+      });
+
+      if (!existingAddress) {
+        throw new NotFoundException(`Địa chỉ ${id} không tồn tại`);
+      }
+
+      // Xóa địa chỉ
+      await this.prisma.address.delete({
+        where: { id },
+      });
+
+      // Nếu địa chỉ vừa xóa là địa chỉ mặc định, set địa chỉ đầu tiên còn lại làm mặc định
+      if (existingAddress.isDefault) {
+        const firstAddress = await this.prisma.address.findFirst({
+          where: { userId: existingAddress.userId },
+          orderBy: { createdAt: 'asc' },
+        });
+
+        if (firstAddress) {
+          await this.prisma.address.update({
+            where: { id: firstAddress.id },
+            data: { isDefault: true },
+          });
+        }
+      }
+
+      return {
+        success: true,
+        message: 'Đã xóa địa chỉ thành công',
+      };
+    } catch (error) {
+      if (error instanceof NotFoundException) throw error;
+      console.error('[AddressService] delete error:', error);
+      throw new BadRequestException('Không thể xóa địa chỉ');
+    }
+  }
+
+  async setDefaultAddress(dto: AddressSetDefaultDto): Promise<AddressResponse> {
+    try {
+      // Kiểm tra địa chỉ có tồn tại và thuộc về user không
+      const existingAddress = await this.prisma.address.findFirst({
+        where: {
+          id: dto.addressId,
+          userId: dto.userId,
+        },
+        select: { id: true, userId: true },
+      });
+
+      if (!existingAddress) {
+        throw new NotFoundException(
+          `Địa chỉ ${dto.addressId} không tồn tại hoặc không thuộc về người dùng này`,
+        );
+      }
+
+      // Bỏ mặc định của tất cả địa chỉ khác
+      await this.prisma.address.updateMany({
+        where: { userId: dto.userId },
+        data: { isDefault: false },
+      });
+
+      // Set địa chỉ này làm mặc định
+      const updatedAddress = await this.prisma.address.update({
+        where: { id: dto.addressId },
+        data: { isDefault: true },
+      });
+
+      return updatedAddress;
+    } catch (error) {
+      if (error instanceof NotFoundException) throw error;
+      console.error('[AddressService] setDefaultAddress error:', error);
+      throw new BadRequestException('Không thể đặt địa chỉ mặc định');
+    }
+  }
 }

@@ -1,8 +1,10 @@
+import { User } from './../../prisma/generated/client/index.d';
 import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { UsersService } from './users.service';
-import { CreateUserDto, UpdateUserDto } from '@shared/dto/user.dto';
+import { CreateUserDto, UpdateUserDto, UserRole } from '@shared/dto/user.dto';
 import * as bcrypt from 'bcryptjs';
+import { prisma } from '@user-app/prisma/prisma.client';
 
 // Mock Prisma
 jest.mock('@user-app/prisma/prisma.client', () => ({
@@ -19,8 +21,6 @@ jest.mock('@user-app/prisma/prisma.client', () => ({
 
 // Mock bcrypt
 jest.mock('bcryptjs');
-
-import { prisma } from '@user-app/prisma/prisma.client';
 
 describe('UsersService', () => {
   let service: UsersService;
@@ -129,6 +129,8 @@ describe('UsersService', () => {
       const updateDto: UpdateUserDto = {
         fullName: 'Updated Name',
         phone: '9876543210',
+        role: UserRole.ADMIN,
+        isActive: true,
       };
 
       const mockUpdatedUser = {
@@ -159,6 +161,8 @@ describe('UsersService', () => {
           phone: true,
           role: true,
           isActive: true,
+          createdAt: true,
+          updatedAt: true,
         },
       });
     });
@@ -166,9 +170,9 @@ describe('UsersService', () => {
     it('should throw NotFoundException when user not found', async () => {
       (prisma.user.findUnique as jest.Mock).mockResolvedValue(null);
 
-      await expect(service.update('999', { fullName: 'Test' })).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.update('999', { fullName: 'Test', role: UserRole.ADMIN }),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 

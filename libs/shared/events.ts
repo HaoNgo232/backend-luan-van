@@ -17,6 +17,7 @@ export const EVENTS = {
     CREATE: 'address.create',
     UPDATE: 'address.update',
     DELETE: 'address.delete',
+    SET_DEFAULT: 'address.setDefault',
   },
   PRODUCT: {
     GET_BY_ID: 'product.getById',

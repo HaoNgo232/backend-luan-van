@@ -35,7 +35,11 @@ export class CreateUserDto {
 
   @IsOptional()
   @IsEnum(UserRole)
-  role?: 'ADMIN' | 'CUSTOMER';
+  role?: UserRole = UserRole.CUSTOMER;
+
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean = true;
 }
 
 export class UpdateUserDto {
@@ -49,7 +53,7 @@ export class UpdateUserDto {
 
   @IsOptional()
   @IsEnum(UserRole)
-  role?: 'ADMIN' | 'CUSTOMER';
+  role?: UserRole;
 
   @IsOptional()
   @IsBoolean()
