@@ -16,7 +16,7 @@ async findById(id: string) {
   return this.prisma.user.findUnique({ where: { id } });
 }
 
-// ✅ CORRECT
+//  CORRECT
 async findById(id: string): Promise<UserResponse> {
   return this.prisma.user.findUnique({ where: { id } });
 }
@@ -62,7 +62,7 @@ class UserService {
   private prisma = new PrismaClient(); // FLAG THIS
 }
 
-// ✅ CORRECT
+//  CORRECT
 class UserService {
   constructor(private readonly prisma: PrismaService) {}
 }
@@ -77,7 +77,7 @@ class UserService {
 ```typescript
 async update(id: string, dto: UpdateDto): Promise<Response> {
   try {
-    // ✅ Always check existence first
+    //  Always check existence first
     const existing = await this.findById(id);
     if (!existing) {
       throw new NotFoundException(`Entity ${id} not found`);
@@ -104,7 +104,7 @@ async findById(id: string): Promise<User> {
   // Exposes passwordHash!
 }
 
-// ✅ SAFE
+//  SAFE
 async findById(id: string): Promise<UserResponse> {
   return prisma.user.findUnique({
     where: { id },
@@ -122,7 +122,7 @@ async findById(id: string): Promise<UserResponse> {
 ## 📊 WHEN SERVICE IS COMPLETE
 
 ```
-✅ Service implementation complete!
+ Service implementation complete!
 
 ⏭️ REQUIRED NEXT STEPS:
 1. Write unit tests

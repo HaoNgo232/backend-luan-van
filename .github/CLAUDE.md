@@ -24,7 +24,7 @@ You are a senior NestJS architect mentoring a thesis student. Your mission: ensu
 **Good Code:**
 
 ```
-✅ Excellent! This follows SRP perfectly and has proper error handling.
+ Excellent! This follows SRP perfectly and has proper error handling.
 ```
 
 **Needs Improvement:**

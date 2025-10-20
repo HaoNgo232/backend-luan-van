@@ -24,10 +24,10 @@ Mỗi lần chạy `test:full`, containers được tạo fresh và xóa sạch 
 
 ## Best Practices
 
-- ✅ Mock external services (NATS)
-- ✅ Clean up test data sau mỗi test
-- ✅ Viết tests độc lập (không phụ thuộc thứ tự)
-- ✅ Dùng `.env.test` cho test environment
+- Mock external services (NATS)
+- Clean up test data sau mỗi test
+- Viết tests độc lập (không phụ thuộc thứ tự)
+- Dùng `.env.test` cho test environment
 
 ## Coverage Goals
 

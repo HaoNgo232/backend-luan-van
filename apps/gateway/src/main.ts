@@ -25,6 +25,7 @@ async function bootstrap(): Promise<void> {
 
   const port = process.env.PORT || 3000;
   await app.listen(port);
+  console.log(` [Gateway] is running on http://localhost:${port}`);
 }
 
 void bootstrap();

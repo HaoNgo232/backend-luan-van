@@ -2,13 +2,13 @@
 
 Review the current code changes and check against these criteria:
 
-## Type Safety ✅
+## Type Safety
 
 - [ ] All async functions have explicit return types (except controllers)
 - [ ] No usage of `any` type without strong justification
 - [ ] DTOs have proper class-validator decorators
 
-## SOLID Principles ✅
+## SOLID Principles
 
 - [ ] **Single Responsibility**: Each class has one clear purpose
 - [ ] **Open/Closed**: Extensible without modification
@@ -16,28 +16,28 @@ Review the current code changes and check against these criteria:
 - [ ] **Interface Segregation**: No fat interfaces
 - [ ] **Dependency Inversion**: Depend on abstractions
 
-## Error Handling ✅
+## Error Handling
 
 - [ ] All async operations wrapped in try-catch
 - [ ] Errors logged with context
 - [ ] Meaningful error messages for users
 - [ ] Proper NestJS exceptions used
 
-## Testing ✅
+## Testing
 
 - [ ] Unit tests present for new/modified services
 - [ ] Edge cases covered
 - [ ] Mock external dependencies
 - [ ] Test coverage ≥70% for core services
 
-## Code Quality ✅
+## Code Quality
 
 - [ ] Meaningful variable/function names
 - [ ] No code duplication
 - [ ] Functions are focused and short
 - [ ] Comments explain WHY, not WHAT
 
-## Prisma Best Practices ✅
+## Prisma Best Practices
 
 - [ ] Explicit select (don't expose sensitive fields)
 - [ ] Proper error handling for unique constraints
@@ -47,7 +47,7 @@ Review the current code changes and check against these criteria:
 
 Provide feedback in this format:
 
-### ✅ What's Good
+### What's Good
 
 [List positive aspects]
 

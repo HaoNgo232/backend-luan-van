@@ -31,7 +31,7 @@ export function validateEnvironment(): void {
     );
   }
 
-  console.log('✅ Environment variables validated successfully');
+  console.log(' Environment variables validated successfully');
 }
 
 /**

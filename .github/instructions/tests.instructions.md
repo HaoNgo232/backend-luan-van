@@ -57,11 +57,11 @@ it('should handle empty string', async () => {
 
 **AI MUST VERIFY:**
 
-✅ Mocks are properly setup  
-✅ Assertions are meaningful (not just `toBeDefined()`)  
-✅ Error cases are tested  
-✅ Mock data is realistic  
-✅ Tests are independent (no shared state)
+Mocks are properly setup  
+ Assertions are meaningful (not just `toBeDefined()`)  
+ Error cases are tested  
+ Mock data is realistic  
+ Tests are independent (no shared state)
 
 ---
 
@@ -89,7 +89,7 @@ describe('UserService', () => {
 
 ---
 
-## ✅ GOOD TEST STRUCTURE
+## GOOD TEST STRUCTURE
 
 ```typescript
 describe('UsersService', () => {
@@ -123,7 +123,7 @@ describe('UsersService', () => {
 **After user writes service:**
 
 ```
-✅ {ServiceName} implementation complete!
+ {ServiceName} implementation complete!
 
 ⏭️ NEXT: Write tests
 🎯 Coverage Goal: ≥70%

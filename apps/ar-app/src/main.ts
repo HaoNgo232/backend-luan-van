@@ -14,5 +14,6 @@ async function bootstrap(): Promise<void> {
     },
   );
   await app.listen();
+  console.log(' [AR Service] is listening on NATS');
 }
 void bootstrap();

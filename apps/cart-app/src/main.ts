@@ -14,5 +14,6 @@ async function bootstrap(): Promise<void> {
     },
   );
   await app.listen();
+  console.log(' [Cart Service] is listening on NATS');
 }
 void bootstrap();

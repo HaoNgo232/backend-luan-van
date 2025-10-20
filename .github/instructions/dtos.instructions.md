@@ -28,13 +28,13 @@ export class CreateEntityDto {
 
 When user creates/modifies DTO, **AI MUST CHECK:**
 
-✅ Required fields have `@IsNotEmpty()`  
-✅ Strings have `@IsString()`  
-✅ Numbers have `@IsNumber()` + `@IsPositive()` or `@Min()`  
-✅ Emails have `@IsEmail()`  
-✅ Arrays have `@IsArray()`  
-✅ Nested objects have `@ValidateNested()` + `@Type()`  
-✅ Enums have `@IsEnum()`
+Required fields have `@IsNotEmpty()`  
+ Strings have `@IsString()`  
+ Numbers have `@IsNumber()` + `@IsPositive()` or `@Min()`  
+ Emails have `@IsEmail()`  
+ Arrays have `@IsArray()`  
+ Nested objects have `@ValidateNested()` + `@Type()`  
+ Enums have `@IsEnum()`
 
 ---
 
@@ -49,7 +49,7 @@ export class CreateUserDto {
   password: string; // No validation!
 }
 
-// ✅ CORRECT
+//  CORRECT
 export class CreateUserDto {
   @IsNotEmpty()
   @IsEmail()
@@ -71,7 +71,7 @@ export class ProductDto {
   price: number; // Query params come as strings!
 }
 
-// ✅ CORRECT
+//  CORRECT
 export class ProductDto {
   @IsNumber()
   @Type(() => Number) // Transform string to number
@@ -92,7 +92,7 @@ export class ProductDto {
   @IsNumber()
   @Type(() => Number)
   @IsPositive()
-  priceInt: number; // ✅ 1999 = $19.99
+  priceInt: number; //  1999 = $19.99
 }
 
 // ❌ NEVER use:

@@ -10,7 +10,7 @@ Help me implement [SERVICE_NAME] following best practices.
 
 ## Implementation Checklist
 
-### 1. Service Layer ✅
+### 1. Service Layer
 
 ```typescript
 @Injectable()
@@ -23,7 +23,7 @@ export class [ServiceName]Service {
 }
 ```
 
-### 2. Controller Layer ✅
+### 2. Controller Layer
 
 ```typescript
 @Controller()
@@ -37,7 +37,7 @@ export class [ServiceName]Controller {
 }
 ```
 
-### 3. DTOs ✅
+### 3. DTOs
 
 ```typescript
 export class Create[EntityName]Dto {
@@ -46,7 +46,7 @@ export class Create[EntityName]Dto {
 }
 ```
 
-### 4. Unit Tests ✅
+### 4. Unit Tests
 
 ```typescript
 describe('[ServiceName]Service', () => {
