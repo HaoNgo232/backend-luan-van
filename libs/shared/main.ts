@@ -1,6 +1,7 @@
 // Shared library exports
 export * from './auth';
 export * from './events';
+export * from './logger';
 export * from './config/env.validation';
 export * from './dto/user.dto';
 export * from './dto/auth.dto';
