@@ -18,6 +18,9 @@ import {
   StockChangeResult,
 } from '@shared/types/product.types';
 import { PrismaService } from '@product-app/prisma/prisma.service';
+import { ProductMapper } from './mappers/product.mapper';
+import { ProductValidator } from './validators/product.validator';
+import { ProductQueryBuilder } from './builders/product-query.builder';
 
 export interface IProductsService {
   getById(dto: ProductIdDto): Promise<ProductResponse>;
@@ -31,7 +34,12 @@ export interface IProductsService {
 
 @Injectable()
 export class ProductsService implements IProductsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly mapper: ProductMapper,
+    private readonly validator: ProductValidator,
+    private readonly queryBuilder: ProductQueryBuilder,
+  ) {}
 
   /**
    * Get product by ID
@@ -50,7 +58,7 @@ export class ProductsService implements IProductsService {
         throw new NotFoundException(`Product with ID ${dto.id} not found`);
       }
 
-      return this.mapToProductResponse(product);
+      return this.mapper.mapToProductResponse(product);
     } catch (error) {
       if (error instanceof NotFoundException) throw error;
       console.error('[ProductsService] getById error:', error);
@@ -75,7 +83,7 @@ export class ProductsService implements IProductsService {
         throw new NotFoundException(`Product with slug '${dto.slug}' not found`);
       }
 
-      return this.mapToProductResponse(product);
+      return this.mapper.mapToProductResponse(product);
     } catch (error) {
       if (error instanceof NotFoundException) throw error;
       console.error('[ProductsService] getBySlug error:', error);
@@ -90,37 +98,9 @@ export class ProductsService implements IProductsService {
     try {
       const page = query.page ?? 1;
       const pageSize = query.pageSize ?? 20;
-      const skip = (page - 1) * pageSize;
+      const { skip, take } = this.queryBuilder.getPaginationParams(query);
 
-      // Build where clause for filters
-      const where: Record<string, unknown> = {};
-
-      // Search filter
-      if (query.q) {
-        where.OR = [
-          { name: { contains: query.q, mode: 'insensitive' } },
-          { description: { contains: query.q, mode: 'insensitive' } },
-          { sku: { contains: query.q, mode: 'insensitive' } },
-        ];
-      }
-
-      // Category filter
-      if (query.categorySlug) {
-        where.category = {
-          slug: query.categorySlug,
-        };
-      }
-
-      // Price range filters
-      if (query.minPriceInt !== undefined || query.maxPriceInt !== undefined) {
-        where.priceInt = {};
-        if (query.minPriceInt !== undefined) {
-          (where.priceInt as Record<string, unknown>).gte = query.minPriceInt;
-        }
-        if (query.maxPriceInt !== undefined) {
-          (where.priceInt as Record<string, unknown>).lte = query.maxPriceInt;
-        }
-      }
+      const where = this.queryBuilder.buildWhereClause(query);
 
       // Execute queries in parallel
       const [products, total] = await Promise.all([
@@ -130,7 +110,7 @@ export class ProductsService implements IProductsService {
             category: true,
           },
           skip,
-          take: pageSize,
+          take,
           orderBy: {
             createdAt: 'desc',
           },
@@ -138,10 +118,10 @@ export class ProductsService implements IProductsService {
         this.prisma.product.count({ where }),
       ]);
 
-      const totalPages = Math.ceil(total / pageSize);
+      const { totalPages } = this.queryBuilder.getPaginationMetadata(page, pageSize, total);
 
       return {
-        products: products.map(p => this.mapToProductResponse(p)),
+        products: this.mapper.mapManyToProductResponse(products),
         total,
         page,
         pageSize,
@@ -161,28 +141,10 @@ export class ProductsService implements IProductsService {
   async create(dto: ProductCreateDto): Promise<ProductResponse> {
     try {
       // Validate unique constraints
-      const existing = await this.prisma.product.findFirst({
-        where: {
-          OR: [{ sku: dto.sku }, { slug: dto.slug }],
-        },
-      });
-
-      if (existing) {
-        if (existing.sku === dto.sku) {
-          throw new ConflictException(`Product with SKU '${dto.sku}' already exists`);
-        }
-        throw new ConflictException(`Product with slug '${dto.slug}' already exists`);
-      }
+      await this.validator.validateUniqueSKUAndSlug(dto.sku, dto.slug);
 
       // Validate category exists if provided
-      if (dto.categoryId) {
-        const category = await this.prisma.category.findUnique({
-          where: { id: dto.categoryId },
-        });
-        if (!category) {
-          throw new BadRequestException(`Category with ID ${dto.categoryId} not found`);
-        }
-      }
+      await this.validator.validateCategoryExists(dto.categoryId);
 
       // Create product
       const product = await this.prisma.product.create({
@@ -204,7 +166,7 @@ export class ProductsService implements IProductsService {
       });
 
       console.log(`[ProductsService] Created product: ${product.id}`);
-      return this.mapToProductResponse(product);
+      return this.mapper.mapToProductResponse(product);
     } catch (error) {
       if (error instanceof ConflictException || error instanceof BadRequestException) {
         throw error;
@@ -230,48 +192,14 @@ export class ProductsService implements IProductsService {
         throw new NotFoundException(`Product with ID ${id} not found`);
       }
 
-      // Check slug uniqueness if updating slug
-      if (dto.slug && dto.slug !== existing.slug) {
-        const slugExists = await this.prisma.product.findUnique({
-          where: { slug: dto.slug },
-        });
-        if (slugExists) {
-          throw new ConflictException(`Product with slug '${dto.slug}' already exists`);
-        }
-      }
+      // Validate slug uniqueness if updating slug
+      await this.validator.validateSlugForUpdate(dto.slug, existing.slug);
 
       // Validate category exists if updating category
-      if (dto.categoryId) {
-        const category = await this.prisma.category.findUnique({
-          where: { id: dto.categoryId },
-        });
-        if (!category) {
-          throw new BadRequestException(`Category with ID ${dto.categoryId} not found`);
-        }
-      }
+      await this.validator.validateCategoryExists(dto.categoryId);
 
       // Build update data object
-      const updateData: {
-        name?: string;
-        slug?: string;
-        priceInt?: number;
-        stock?: number;
-        description?: string | null;
-        imageUrls?: string[];
-        categoryId?: string | null;
-        attributes?: never;
-        model3dUrl?: string | null;
-      } = {};
-
-      if (dto.name) updateData.name = dto.name;
-      if (dto.slug) updateData.slug = dto.slug;
-      if (dto.priceInt !== undefined) updateData.priceInt = dto.priceInt;
-      if (dto.stock !== undefined) updateData.stock = dto.stock;
-      if (dto.description !== undefined) updateData.description = dto.description;
-      if (dto.imageUrls) updateData.imageUrls = dto.imageUrls;
-      if (dto.categoryId !== undefined) updateData.categoryId = dto.categoryId;
-      if (dto.attributes !== undefined) updateData.attributes = dto.attributes as never;
-      if (dto.model3dUrl !== undefined) updateData.model3dUrl = dto.model3dUrl;
+      const updateData = this.buildProductUpdateData(dto);
 
       // Update product
       const product = await this.prisma.product.update({
@@ -283,7 +211,7 @@ export class ProductsService implements IProductsService {
       });
 
       console.log(`[ProductsService] Updated product: ${id}`);
-      return this.mapToProductResponse(product);
+      return this.mapper.mapToProductResponse(product);
     } catch (error) {
       if (
         error instanceof NotFoundException ||
@@ -331,6 +259,8 @@ export class ProductsService implements IProductsService {
    */
   async incrementStock(dto: StockChangeDto): Promise<StockChangeResult> {
     try {
+      this.validator.validateStockChangeQuantity(dto.quantity);
+
       const product = await this.prisma.product.findUnique({
         where: { id: dto.productId },
       });
@@ -358,7 +288,9 @@ export class ProductsService implements IProductsService {
         quantityChanged: dto.quantity,
       };
     } catch (error) {
-      if (error instanceof NotFoundException) throw error;
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
+      }
       console.error('[ProductsService] incrementStock error:', error);
       throw new BadRequestException('Failed to increment stock');
     }
@@ -371,6 +303,8 @@ export class ProductsService implements IProductsService {
    */
   async decrementStock(dto: StockChangeDto): Promise<StockChangeResult> {
     try {
+      this.validator.validateStockChangeQuantity(dto.quantity);
+
       const product = await this.prisma.product.findUnique({
         where: { id: dto.productId },
       });
@@ -383,11 +317,7 @@ export class ProductsService implements IProductsService {
       const newStock = previousStock - dto.quantity;
 
       // Validate sufficient stock
-      if (newStock < 0) {
-        throw new BadRequestException(
-          `Insufficient stock for product ${dto.productId}. Available: ${previousStock}, Requested: ${dto.quantity}`,
-        );
-      }
+      this.validator.validateSufficientStock(previousStock, dto.quantity);
 
       await this.prisma.product.update({
         where: { id: dto.productId },
@@ -414,57 +344,42 @@ export class ProductsService implements IProductsService {
   }
 
   /**
-   * Map Prisma product to ProductResponse
+   * Build update data object from DTO
+   * @private
    */
-  private mapToProductResponse(product: {
-    id: string;
-    sku: string;
-    name: string;
-    slug: string;
-    priceInt: number;
-    stock: number;
-    description: string | null;
-    imageUrls: string[];
-    categoryId: string | null;
-    attributes: unknown;
-    model3dUrl: string | null;
-    createdAt: Date;
-    updatedAt: Date;
-    category?: {
-      id: string;
-      name: string;
-      slug: string;
-      description: string | null;
-      parentId: string | null;
-      createdAt: Date;
-      updatedAt: Date;
-    } | null;
-  }): ProductResponse {
-    return {
-      id: product.id,
-      sku: product.sku,
-      name: product.name,
-      slug: product.slug,
-      priceInt: product.priceInt,
-      stock: product.stock,
-      description: product.description,
-      imageUrls: product.imageUrls,
-      categoryId: product.categoryId,
-      attributes: product.attributes as Record<string, unknown> | null,
-      model3dUrl: product.model3dUrl,
-      createdAt: product.createdAt,
-      updatedAt: product.updatedAt,
-      category: product.category
-        ? {
-            id: product.category.id,
-            name: product.category.name,
-            slug: product.category.slug,
-            description: product.category.description,
-            parentId: product.category.parentId,
-            createdAt: product.category.createdAt,
-            updatedAt: product.category.updatedAt,
-          }
-        : null,
-    };
+  private buildProductUpdateData(dto: ProductUpdateDto): {
+    name?: string;
+    slug?: string;
+    priceInt?: number;
+    stock?: number;
+    description?: string | null;
+    imageUrls?: string[];
+    categoryId?: string | null;
+    attributes?: never;
+    model3dUrl?: string | null;
+  } {
+    const updateData: {
+      name?: string;
+      slug?: string;
+      priceInt?: number;
+      stock?: number;
+      description?: string | null;
+      imageUrls?: string[];
+      categoryId?: string | null;
+      attributes?: never;
+      model3dUrl?: string | null;
+    } = {};
+
+    if (dto.name) updateData.name = dto.name;
+    if (dto.slug) updateData.slug = dto.slug;
+    if (dto.priceInt !== undefined) updateData.priceInt = dto.priceInt;
+    if (dto.stock !== undefined) updateData.stock = dto.stock;
+    if (dto.description !== undefined) updateData.description = dto.description;
+    if (dto.imageUrls) updateData.imageUrls = dto.imageUrls;
+    if (dto.categoryId !== undefined) updateData.categoryId = dto.categoryId;
+    if (dto.attributes !== undefined) updateData.attributes = dto.attributes as never;
+    if (dto.model3dUrl !== undefined) updateData.model3dUrl = dto.model3dUrl;
+
+    return updateData;
   }
 }

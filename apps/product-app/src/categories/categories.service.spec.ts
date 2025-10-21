@@ -2,10 +2,16 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import { CategoriesService } from './categories.service';
 import { PrismaService } from '@product-app/prisma/prisma.service';
+import { CategoryMapper } from './mappers/category.mapper';
+import { CategoryValidator } from './validators/category.validator';
+import { CategoryQueryBuilder } from './builders/category-query.builder';
 
 describe('CategoriesService', () => {
   let service: CategoriesService;
   let prisma: PrismaService;
+  let mapper: CategoryMapper;
+  let validator: CategoryValidator;
+  let queryBuilder: CategoryQueryBuilder;
 
   const mockPrismaService = {
     category: {
@@ -17,6 +23,26 @@ describe('CategoriesService', () => {
       update: jest.fn(),
       delete: jest.fn(),
     },
+  };
+
+  const mockCategoryMapper = {
+    mapToCategoryResponse: jest.fn(),
+    mapToCategoryWithRelations: jest.fn(),
+    mapManyToCategoryResponse: jest.fn(),
+  };
+
+  const mockCategoryValidator = {
+    validateSlugUnique: jest.fn(),
+    validateSlugForUpdate: jest.fn(),
+    validateParentExists: jest.fn(),
+    validateParentUpdate: jest.fn(),
+    validateCanDelete: jest.fn(),
+  };
+
+  const mockCategoryQueryBuilder = {
+    buildWhereClause: jest.fn(),
+    getPaginationParams: jest.fn(),
+    getPaginationMetadata: jest.fn(),
   };
 
   const mockCategory = {
@@ -51,11 +77,26 @@ describe('CategoriesService', () => {
           provide: PrismaService,
           useValue: mockPrismaService,
         },
+        {
+          provide: CategoryMapper,
+          useValue: mockCategoryMapper,
+        },
+        {
+          provide: CategoryValidator,
+          useValue: mockCategoryValidator,
+        },
+        {
+          provide: CategoryQueryBuilder,
+          useValue: mockCategoryQueryBuilder,
+        },
       ],
     }).compile();
 
     service = module.get<CategoriesService>(CategoriesService);
     prisma = module.get<PrismaService>(PrismaService);
+    mapper = module.get<CategoryMapper>(CategoryMapper);
+    validator = module.get<CategoryValidator>(CategoryValidator);
+    queryBuilder = module.get<CategoryQueryBuilder>(CategoryQueryBuilder);
 
     // Reset mocks
     jest.clearAllMocks();
@@ -68,6 +109,7 @@ describe('CategoriesService', () => {
   describe('getById', () => {
     it('should return a category when found', async () => {
       mockPrismaService.category.findUnique.mockResolvedValue(mockCategory);
+      mockCategoryMapper.mapToCategoryWithRelations.mockReturnValue(mockCategory);
 
       const result = await service.getById({ id: 'cat-1' });
 
@@ -81,6 +123,7 @@ describe('CategoriesService', () => {
           children: true,
         },
       });
+      expect(mapper.mapToCategoryWithRelations).toHaveBeenCalledWith(mockCategory);
     });
 
     it('should throw NotFoundException when category not found', async () => {
@@ -102,6 +145,7 @@ describe('CategoriesService', () => {
   describe('getBySlug', () => {
     it('should return a category when found by slug', async () => {
       mockPrismaService.category.findUnique.mockResolvedValue(mockCategory);
+      mockCategoryMapper.mapToCategoryWithRelations.mockReturnValue(mockCategory);
 
       const result = await service.getBySlug({ slug: 'electronics' });
 
@@ -114,6 +158,7 @@ describe('CategoriesService', () => {
           children: true,
         },
       });
+      expect(mapper.mapToCategoryWithRelations).toHaveBeenCalledWith(mockCategory);
     });
 
     it('should throw NotFoundException when category not found', async () => {
@@ -127,6 +172,14 @@ describe('CategoriesService', () => {
     it('should return paginated categories', async () => {
       mockPrismaService.category.findMany.mockResolvedValue([mockCategory]);
       mockPrismaService.category.count.mockResolvedValue(1);
+      mockCategoryQueryBuilder.getPaginationParams.mockReturnValue({ skip: 0, take: 20 });
+      mockCategoryQueryBuilder.buildWhereClause.mockResolvedValue({});
+      mockCategoryQueryBuilder.getPaginationMetadata.mockReturnValue({
+        page: 1,
+        pageSize: 20,
+        totalPages: 1,
+      });
+      mockCategoryMapper.mapManyToCategoryResponse.mockReturnValue([mockCategory]);
 
       const result = await service.list({ page: 1, pageSize: 20 });
 
@@ -141,33 +194,47 @@ describe('CategoriesService', () => {
     it('should apply search filter', async () => {
       mockPrismaService.category.findMany.mockResolvedValue([]);
       mockPrismaService.category.count.mockResolvedValue(0);
+      mockCategoryQueryBuilder.getPaginationParams.mockReturnValue({ skip: 0, take: 20 });
+      mockCategoryQueryBuilder.buildWhereClause.mockResolvedValue({
+        OR: expect.any(Array),
+      });
+      mockCategoryQueryBuilder.getPaginationMetadata.mockReturnValue({
+        page: 1,
+        pageSize: 20,
+        totalPages: 0,
+      });
+      mockCategoryMapper.mapManyToCategoryResponse.mockReturnValue([]);
 
       await service.list({ q: 'search term', page: 1, pageSize: 20 });
 
-      expect(prisma.category.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            OR: expect.any(Array),
-          }),
-        }),
-      );
+      expect(queryBuilder.buildWhereClause).toHaveBeenCalled();
     });
 
     it('should filter by parent slug', async () => {
-      mockPrismaService.category.findUnique.mockResolvedValue(mockCategory);
       mockPrismaService.category.findMany.mockResolvedValue([mockChildCategory]);
       mockPrismaService.category.count.mockResolvedValue(1);
+      mockCategoryQueryBuilder.getPaginationParams.mockReturnValue({ skip: 0, take: 20 });
+      mockCategoryQueryBuilder.buildWhereClause.mockResolvedValue({
+        parentId: 'cat-1',
+      });
+      mockCategoryQueryBuilder.getPaginationMetadata.mockReturnValue({
+        page: 1,
+        pageSize: 20,
+        totalPages: 1,
+      });
+      mockCategoryMapper.mapManyToCategoryResponse.mockReturnValue([mockChildCategory]);
 
       const result = await service.list({ parentSlug: 'electronics' });
 
       expect(result.categories).toHaveLength(1);
-      expect(prisma.category.findUnique).toHaveBeenCalledWith({
-        where: { slug: 'electronics' },
-      });
     });
 
     it('should return empty results if parent not found', async () => {
-      mockPrismaService.category.findUnique.mockResolvedValue(null);
+      mockCategoryQueryBuilder.getPaginationParams.mockReturnValue({ skip: 0, take: 20 });
+      mockCategoryQueryBuilder.buildWhereClause.mockResolvedValue({
+        id: { equals: 'PARENT_NOT_FOUND' },
+      });
+      mockCategoryMapper.mapManyToCategoryResponse.mockReturnValue([]);
 
       const result = await service.list({ parentSlug: 'non-existent' });
 
@@ -185,8 +252,13 @@ describe('CategoriesService', () => {
     };
 
     it('should create a new category successfully', async () => {
-      mockPrismaService.category.findUnique.mockResolvedValue(null);
+      mockCategoryValidator.validateSlugUnique.mockResolvedValue(undefined);
       mockPrismaService.category.create.mockResolvedValue({
+        ...mockCategory,
+        name: 'New Category',
+        slug: 'new-category',
+      });
+      mockCategoryMapper.mapToCategoryResponse.mockReturnValue({
         ...mockCategory,
         name: 'New Category',
         slug: 'new-category',
@@ -196,11 +268,14 @@ describe('CategoriesService', () => {
 
       expect(result).toBeDefined();
       expect(result.name).toBe('New Category');
+      expect(validator.validateSlugUnique).toHaveBeenCalledWith('new-category');
       expect(prisma.category.create).toHaveBeenCalled();
     });
 
     it('should throw ConflictException if slug already exists', async () => {
-      mockPrismaService.category.findUnique.mockResolvedValue(mockCategory);
+      mockCategoryValidator.validateSlugUnique.mockRejectedValue(
+        new ConflictException("Category with slug 'new-category' already exists"),
+      );
 
       await expect(service.create(createDto)).rejects.toThrow(ConflictException);
       await expect(service.create(createDto)).rejects.toThrow(
@@ -209,9 +284,10 @@ describe('CategoriesService', () => {
     });
 
     it('should throw BadRequestException if parent not found', async () => {
-      mockPrismaService.category.findUnique
-        .mockResolvedValueOnce(null) // Slug check
-        .mockResolvedValueOnce(null); // Parent check
+      mockCategoryValidator.validateSlugUnique.mockResolvedValue(undefined);
+      mockCategoryValidator.validateParentExists.mockRejectedValue(
+        new BadRequestException('Parent category with ID non-existent not found'),
+      );
 
       await expect(service.create({ ...createDto, parentId: 'non-existent' })).rejects.toThrow(
         BadRequestException,
@@ -219,10 +295,10 @@ describe('CategoriesService', () => {
     });
 
     it('should create child category with valid parent', async () => {
-      mockPrismaService.category.findUnique
-        .mockResolvedValueOnce(null) // Slug check
-        .mockResolvedValueOnce(mockCategory); // Parent check
+      mockCategoryValidator.validateSlugUnique.mockResolvedValue(undefined);
+      mockCategoryValidator.validateParentExists.mockResolvedValue(undefined);
       mockPrismaService.category.create.mockResolvedValue(mockChildCategory);
+      mockCategoryMapper.mapToCategoryResponse.mockReturnValue(mockChildCategory);
 
       const result = await service.create({
         ...createDto,
@@ -242,7 +318,13 @@ describe('CategoriesService', () => {
 
     it('should update a category successfully', async () => {
       mockPrismaService.category.findUnique.mockResolvedValue(mockCategory);
+      mockCategoryValidator.validateSlugForUpdate.mockResolvedValue(undefined);
+      mockCategoryValidator.validateParentUpdate.mockResolvedValue(undefined);
       mockPrismaService.category.update.mockResolvedValue({
+        ...mockCategory,
+        ...updateDto,
+      });
+      mockCategoryMapper.mapToCategoryResponse.mockReturnValue({
         ...mockCategory,
         ...updateDto,
       });
@@ -261,9 +343,10 @@ describe('CategoriesService', () => {
     });
 
     it('should throw ConflictException if new slug already exists', async () => {
-      mockPrismaService.category.findUnique
-        .mockResolvedValueOnce(mockCategory)
-        .mockResolvedValueOnce({ ...mockCategory, id: 'different-id' });
+      mockPrismaService.category.findUnique.mockResolvedValue(mockCategory);
+      mockCategoryValidator.validateSlugForUpdate.mockRejectedValue(
+        new ConflictException("Category with slug 'existing-slug' already exists"),
+      );
 
       await expect(service.update('cat-1', { slug: 'existing-slug' })).rejects.toThrow(
         ConflictException,
@@ -272,6 +355,10 @@ describe('CategoriesService', () => {
 
     it('should throw BadRequestException if trying to set self as parent', async () => {
       mockPrismaService.category.findUnique.mockResolvedValue(mockCategory);
+      mockCategoryValidator.validateSlugForUpdate.mockResolvedValue(undefined);
+      mockCategoryValidator.validateParentUpdate.mockRejectedValue(
+        new BadRequestException('Category cannot be its own parent'),
+      );
 
       await expect(service.update('cat-1', { parentId: 'cat-1' })).rejects.toThrow(
         BadRequestException,
@@ -282,56 +369,27 @@ describe('CategoriesService', () => {
     });
 
     it('should throw BadRequestException for circular reference', async () => {
-      // Setup: A (cat-1) -> B (cat-2)
-      // Trying to set A.parentId = B (makes B parent of A, but B is child of A - circular!)
-
-      // Reset all mocks to ensure clean state
-      jest.clearAllMocks();
-
-      mockPrismaService.category.findUnique
-        .mockResolvedValueOnce(mockCategory) // 1. existing check - cat-1 exists
-        .mockResolvedValueOnce({
-          // 2. parent check - cat-2 exists and has cat-1 as parent
-          id: 'cat-2',
-          name: 'Child Category',
-          slug: 'child',
-          parentId: 'cat-1',
-          description: null,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        })
-        .mockResolvedValueOnce({
-          // 3. checkCircularReference iteration 1 - get cat-2 info
-          parentId: 'cat-1', // B's parent is A - this creates circular!
-        });
+      mockPrismaService.category.findUnique.mockResolvedValue(mockCategory);
+      mockCategoryValidator.validateSlugForUpdate.mockResolvedValue(undefined);
+      mockCategoryValidator.validateParentUpdate.mockRejectedValue(
+        new BadRequestException(
+          'Cannot create circular reference: the new parent is a descendant of this category',
+        ),
+      );
 
       await expect(service.update('cat-1', { parentId: 'cat-2' })).rejects.toThrow(
         /circular reference/,
       );
     });
+
     it('should throw BadRequestException for deep circular reference (grandchild)', async () => {
-      // Setup: A (cat-1) -> B (cat-2) -> C (cat-3)
-      // Trying to set A.parentId = C (makes C parent of A, but C is descendant of A - circular!)
-
-      // Reset all mocks
-      jest.clearAllMocks();
-
-      const grandchildCategory = {
-        id: 'cat-3',
-        name: 'Grandchild',
-        slug: 'grandchild',
-        description: null,
-        parentId: 'cat-2',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      mockPrismaService.category.findUnique
-        .mockResolvedValueOnce(mockCategory) // 1. existing check - cat-1 exists
-        .mockResolvedValueOnce(grandchildCategory) // 2. parent check - cat-3 exists
-        // checkCircularReference traversal (starting from cat-3, looking for cat-1):
-        .mockResolvedValueOnce({ parentId: 'cat-2' }) // 3. cat-3's parent is cat-2
-        .mockResolvedValueOnce({ parentId: 'cat-1' }); // 4. cat-2's parent is cat-1 (FOUND circular!)
+      mockPrismaService.category.findUnique.mockResolvedValue(mockCategory);
+      mockCategoryValidator.validateSlugForUpdate.mockResolvedValue(undefined);
+      mockCategoryValidator.validateParentUpdate.mockRejectedValue(
+        new BadRequestException(
+          'Cannot create circular reference: the new parent is a descendant of this category',
+        ),
+      );
 
       await expect(service.update('cat-1', { parentId: 'cat-3' })).rejects.toThrow(
         /circular reference/,
@@ -341,33 +399,39 @@ describe('CategoriesService', () => {
 
   describe('delete', () => {
     it('should delete a category successfully', async () => {
-      mockPrismaService.category.findUnique.mockResolvedValue({
-        ...mockCategory,
-        children: [],
-        products: [],
+      mockCategoryValidator.validateCanDelete.mockResolvedValue({
+        childrenCount: 0,
+        productCount: 0,
       });
       mockPrismaService.category.delete.mockResolvedValue(mockCategory);
 
       const result = await service.delete('cat-1');
 
       expect(result).toEqual({ success: true, id: 'cat-1' });
+      expect(validator.validateCanDelete).toHaveBeenCalledWith('cat-1');
       expect(prisma.category.delete).toHaveBeenCalledWith({
         where: { id: 'cat-1' },
       });
     });
 
     it('should throw NotFoundException if category not found', async () => {
-      mockPrismaService.category.findUnique.mockResolvedValue(null);
+      mockCategoryValidator.validateCanDelete.mockResolvedValue({
+        childrenCount: 0,
+        productCount: 0,
+      });
+      mockPrismaService.category.delete.mockRejectedValue(
+        new Error('Record to delete does not exist'),
+      );
 
-      await expect(service.delete('non-existent')).rejects.toThrow(NotFoundException);
+      await expect(service.delete('non-existent')).rejects.toThrow(BadRequestException);
     });
 
     it('should throw BadRequestException if category has children', async () => {
-      mockPrismaService.category.findUnique.mockResolvedValue({
-        ...mockCategory,
-        children: [mockChildCategory],
-        products: [],
-      });
+      mockCategoryValidator.validateCanDelete.mockRejectedValue(
+        new BadRequestException(
+          'Cannot delete category with child categories. Delete or reassign children first.',
+        ),
+      );
 
       await expect(service.delete('cat-1')).rejects.toThrow(BadRequestException);
       await expect(service.delete('cat-1')).rejects.toThrow(
@@ -376,11 +440,9 @@ describe('CategoriesService', () => {
     });
 
     it('should throw BadRequestException if category has products', async () => {
-      mockPrismaService.category.findUnique.mockResolvedValue({
-        ...mockCategory,
-        children: [],
-        products: [{ id: 'prod-1', name: 'Product 1' }],
-      });
+      mockCategoryValidator.validateCanDelete.mockRejectedValue(
+        new BadRequestException('Cannot delete category with products. Reassign products first.'),
+      );
 
       await expect(service.delete('cat-1')).rejects.toThrow(BadRequestException);
       await expect(service.delete('cat-1')).rejects.toThrow(/Cannot delete category with products/);

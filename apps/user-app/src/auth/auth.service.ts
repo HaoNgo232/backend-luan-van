@@ -149,10 +149,10 @@ export class AuthService implements IAuthService {
   }
 
   private parseExpiresIn(expiresIn: string): number {
-    const match = expiresIn.match(/^(\d+)([smhd])$/);
+    const match = new RegExp(/^(\d+)([smhd])$/).exec(expiresIn);
     if (!match) return 900; // default 15 minutes
 
-    const value = parseInt(match[1], 10);
+    const value = Number.parseInt(match[1], 10);
     const unit = match[2];
 
     const multipliers: Record<string, number> = {

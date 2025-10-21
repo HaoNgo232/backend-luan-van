@@ -2,10 +2,16 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import { ProductsService } from './products.service';
 import { PrismaService } from '@product-app/prisma/prisma.service';
+import { ProductMapper } from './mappers/product.mapper';
+import { ProductValidator } from './validators/product.validator';
+import { ProductQueryBuilder } from './builders/product-query.builder';
 
 describe('ProductsService', () => {
   let service: ProductsService;
   let prisma: PrismaService;
+  let mapper: ProductMapper;
+  let validator: ProductValidator;
+  let queryBuilder: ProductQueryBuilder;
 
   const mockPrismaService = {
     product: {
@@ -20,6 +26,25 @@ describe('ProductsService', () => {
     category: {
       findUnique: jest.fn(),
     },
+  };
+
+  const mockProductMapper = {
+    mapToProductResponse: jest.fn(),
+    mapManyToProductResponse: jest.fn(),
+  };
+
+  const mockProductValidator = {
+    validateUniqueSKUAndSlug: jest.fn(),
+    validateSlugForUpdate: jest.fn(),
+    validateCategoryExists: jest.fn(),
+    validateStockChangeQuantity: jest.fn(),
+    validateSufficientStock: jest.fn(),
+  };
+
+  const mockProductQueryBuilder = {
+    buildWhereClause: jest.fn(),
+    getPaginationParams: jest.fn(),
+    getPaginationMetadata: jest.fn(),
   };
 
   const mockProduct = {
@@ -55,11 +80,26 @@ describe('ProductsService', () => {
           provide: PrismaService,
           useValue: mockPrismaService,
         },
+        {
+          provide: ProductMapper,
+          useValue: mockProductMapper,
+        },
+        {
+          provide: ProductValidator,
+          useValue: mockProductValidator,
+        },
+        {
+          provide: ProductQueryBuilder,
+          useValue: mockProductQueryBuilder,
+        },
       ],
     }).compile();
 
     service = module.get<ProductsService>(ProductsService);
     prisma = module.get<PrismaService>(PrismaService);
+    mapper = module.get<ProductMapper>(ProductMapper);
+    validator = module.get<ProductValidator>(ProductValidator);
+    queryBuilder = module.get<ProductQueryBuilder>(ProductQueryBuilder);
 
     // Reset mocks
     jest.clearAllMocks();
@@ -72,6 +112,7 @@ describe('ProductsService', () => {
   describe('getById', () => {
     it('should return a product when found', async () => {
       mockPrismaService.product.findUnique.mockResolvedValue(mockProduct);
+      mockProductMapper.mapToProductResponse.mockReturnValue(mockProduct);
 
       const result = await service.getById({ id: 'prod-1' });
 
@@ -82,6 +123,7 @@ describe('ProductsService', () => {
         where: { id: 'prod-1' },
         include: { category: true },
       });
+      expect(mapper.mapToProductResponse).toHaveBeenCalledWith(mockProduct);
     });
 
     it('should throw NotFoundException when product not found', async () => {
@@ -103,6 +145,7 @@ describe('ProductsService', () => {
   describe('getBySlug', () => {
     it('should return a product when found by slug', async () => {
       mockPrismaService.product.findUnique.mockResolvedValue(mockProduct);
+      mockProductMapper.mapToProductResponse.mockReturnValue(mockProduct);
 
       const result = await service.getBySlug({ slug: 'test-product' });
 
@@ -112,6 +155,7 @@ describe('ProductsService', () => {
         where: { slug: 'test-product' },
         include: { category: true },
       });
+      expect(mapper.mapToProductResponse).toHaveBeenCalledWith(mockProduct);
     });
 
     it('should throw NotFoundException when product not found', async () => {
@@ -125,6 +169,14 @@ describe('ProductsService', () => {
     it('should return paginated products', async () => {
       mockPrismaService.product.findMany.mockResolvedValue([mockProduct]);
       mockPrismaService.product.count.mockResolvedValue(1);
+      mockProductQueryBuilder.getPaginationParams.mockReturnValue({ skip: 0, take: 20 });
+      mockProductQueryBuilder.buildWhereClause.mockReturnValue({});
+      mockProductQueryBuilder.getPaginationMetadata.mockReturnValue({
+        page: 1,
+        pageSize: 20,
+        totalPages: 1,
+      });
+      mockProductMapper.mapManyToProductResponse.mockReturnValue([mockProduct]);
 
       const result = await service.list({ page: 1, pageSize: 20 });
 
@@ -139,46 +191,58 @@ describe('ProductsService', () => {
     it('should apply search filter', async () => {
       mockPrismaService.product.findMany.mockResolvedValue([]);
       mockPrismaService.product.count.mockResolvedValue(0);
+      mockProductQueryBuilder.getPaginationParams.mockReturnValue({ skip: 0, take: 20 });
+      mockProductQueryBuilder.buildWhereClause.mockReturnValue({
+        OR: expect.any(Array),
+      });
+      mockProductQueryBuilder.getPaginationMetadata.mockReturnValue({
+        page: 1,
+        pageSize: 20,
+        totalPages: 0,
+      });
+      mockProductMapper.mapManyToProductResponse.mockReturnValue([]);
 
       await service.list({ q: 'search term', page: 1, pageSize: 20 });
 
-      expect(prisma.product.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            OR: expect.any(Array),
-          }),
-        }),
-      );
+      expect(queryBuilder.buildWhereClause).toHaveBeenCalled();
     });
 
     it('should apply category filter', async () => {
       mockPrismaService.product.findMany.mockResolvedValue([]);
       mockPrismaService.product.count.mockResolvedValue(0);
+      mockProductQueryBuilder.getPaginationParams.mockReturnValue({ skip: 0, take: 20 });
+      mockProductQueryBuilder.buildWhereClause.mockReturnValue({
+        category: { slug: 'test-category' },
+      });
+      mockProductQueryBuilder.getPaginationMetadata.mockReturnValue({
+        page: 1,
+        pageSize: 20,
+        totalPages: 0,
+      });
+      mockProductMapper.mapManyToProductResponse.mockReturnValue([]);
 
       await service.list({ categorySlug: 'test-category' });
 
-      expect(prisma.product.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            category: { slug: 'test-category' },
-          }),
-        }),
-      );
+      expect(queryBuilder.buildWhereClause).toHaveBeenCalled();
     });
 
     it('should apply price range filters', async () => {
       mockPrismaService.product.findMany.mockResolvedValue([]);
       mockPrismaService.product.count.mockResolvedValue(0);
+      mockProductQueryBuilder.getPaginationParams.mockReturnValue({ skip: 0, take: 20 });
+      mockProductQueryBuilder.buildWhereClause.mockReturnValue({
+        priceInt: { gte: 1000, lte: 2000 },
+      });
+      mockProductQueryBuilder.getPaginationMetadata.mockReturnValue({
+        page: 1,
+        pageSize: 20,
+        totalPages: 0,
+      });
+      mockProductMapper.mapManyToProductResponse.mockReturnValue([]);
 
       await service.list({ minPriceInt: 1000, maxPriceInt: 2000 });
 
-      expect(prisma.product.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            priceInt: { gte: 1000, lte: 2000 },
-          }),
-        }),
-      );
+      expect(queryBuilder.buildWhereClause).toHaveBeenCalled();
     });
   });
 
@@ -197,12 +261,13 @@ describe('ProductsService', () => {
     };
 
     it('should create a new product successfully', async () => {
-      mockPrismaService.product.findFirst.mockResolvedValue(null);
-      mockPrismaService.category.findUnique.mockResolvedValue({
-        id: 'cat-1',
-        name: 'Test Category',
-      });
+      mockProductValidator.validateUniqueSKUAndSlug.mockResolvedValue(undefined);
+      mockProductValidator.validateCategoryExists.mockResolvedValue(undefined);
       mockPrismaService.product.create.mockResolvedValue({
+        ...mockProduct,
+        ...createDto,
+      });
+      mockProductMapper.mapToProductResponse.mockReturnValue({
         ...mockProduct,
         ...createDto,
       });
@@ -211,14 +276,15 @@ describe('ProductsService', () => {
 
       expect(result).toBeDefined();
       expect(result.sku).toBe('SKU-002');
+      expect(validator.validateUniqueSKUAndSlug).toHaveBeenCalledWith('SKU-002', 'new-product');
+      expect(validator.validateCategoryExists).toHaveBeenCalledWith('cat-1');
       expect(prisma.product.create).toHaveBeenCalled();
     });
 
     it('should throw ConflictException if SKU already exists', async () => {
-      mockPrismaService.product.findFirst.mockResolvedValue({
-        ...mockProduct,
-        sku: 'SKU-002',
-      });
+      mockProductValidator.validateUniqueSKUAndSlug.mockRejectedValue(
+        new ConflictException("Product with SKU 'SKU-002' already exists"),
+      );
 
       await expect(service.create(createDto)).rejects.toThrow(ConflictException);
       await expect(service.create(createDto)).rejects.toThrow(
@@ -227,11 +293,9 @@ describe('ProductsService', () => {
     });
 
     it('should throw ConflictException if slug already exists', async () => {
-      mockPrismaService.product.findFirst.mockResolvedValue({
-        ...mockProduct,
-        sku: 'DIFFERENT-SKU',
-        slug: 'new-product',
-      });
+      mockProductValidator.validateUniqueSKUAndSlug.mockRejectedValue(
+        new ConflictException("Product with slug 'new-product' already exists"),
+      );
 
       await expect(service.create(createDto)).rejects.toThrow(ConflictException);
       await expect(service.create(createDto)).rejects.toThrow(
@@ -240,8 +304,10 @@ describe('ProductsService', () => {
     });
 
     it('should throw BadRequestException if category not found', async () => {
-      mockPrismaService.product.findFirst.mockResolvedValue(null);
-      mockPrismaService.category.findUnique.mockResolvedValue(null);
+      mockProductValidator.validateUniqueSKUAndSlug.mockResolvedValue(undefined);
+      mockProductValidator.validateCategoryExists.mockRejectedValue(
+        new BadRequestException('Category with ID cat-1 not found'),
+      );
 
       await expect(service.create(createDto)).rejects.toThrow(BadRequestException);
     });
@@ -255,7 +321,13 @@ describe('ProductsService', () => {
 
     it('should update a product successfully', async () => {
       mockPrismaService.product.findUnique.mockResolvedValue(mockProduct);
+      mockProductValidator.validateSlugForUpdate.mockResolvedValue(undefined);
+      mockProductValidator.validateCategoryExists.mockResolvedValue(undefined);
       mockPrismaService.product.update.mockResolvedValue({
+        ...mockProduct,
+        ...updateDto,
+      });
+      mockProductMapper.mapToProductResponse.mockReturnValue({
         ...mockProduct,
         ...updateDto,
       });
@@ -274,9 +346,10 @@ describe('ProductsService', () => {
     });
 
     it('should throw ConflictException if new slug already exists', async () => {
-      mockPrismaService.product.findUnique
-        .mockResolvedValueOnce(mockProduct)
-        .mockResolvedValueOnce({ ...mockProduct, id: 'different-id' });
+      mockPrismaService.product.findUnique.mockResolvedValue(mockProduct);
+      mockProductValidator.validateSlugForUpdate.mockRejectedValue(
+        new ConflictException("Product with slug 'existing-slug' already exists"),
+      );
 
       await expect(service.update('prod-1', { slug: 'existing-slug' })).rejects.toThrow(
         ConflictException,
@@ -306,6 +379,7 @@ describe('ProductsService', () => {
 
   describe('incrementStock', () => {
     it('should increment stock successfully', async () => {
+      mockProductValidator.validateStockChangeQuantity.mockReturnValue(undefined);
       mockPrismaService.product.findUnique.mockResolvedValue(mockProduct);
       mockPrismaService.product.update.mockResolvedValue({
         ...mockProduct,
@@ -323,6 +397,7 @@ describe('ProductsService', () => {
         newStock: 15,
         quantityChanged: 5,
       });
+      expect(validator.validateStockChangeQuantity).toHaveBeenCalledWith(5);
       expect(prisma.product.update).toHaveBeenCalledWith({
         where: { id: 'prod-1' },
         data: { stock: 15 },
@@ -330,6 +405,7 @@ describe('ProductsService', () => {
     });
 
     it('should throw NotFoundException if product not found', async () => {
+      mockProductValidator.validateStockChangeQuantity.mockReturnValue(undefined);
       mockPrismaService.product.findUnique.mockResolvedValue(null);
 
       await expect(
@@ -340,6 +416,8 @@ describe('ProductsService', () => {
 
   describe('decrementStock', () => {
     it('should decrement stock successfully', async () => {
+      mockProductValidator.validateStockChangeQuantity.mockReturnValue(undefined);
+      mockProductValidator.validateSufficientStock.mockReturnValue(undefined);
       mockPrismaService.product.findUnique.mockResolvedValue(mockProduct);
       mockPrismaService.product.update.mockResolvedValue({
         ...mockProduct,
@@ -357,10 +435,16 @@ describe('ProductsService', () => {
         newStock: 7,
         quantityChanged: 3,
       });
+      expect(validator.validateStockChangeQuantity).toHaveBeenCalledWith(3);
+      expect(validator.validateSufficientStock).toHaveBeenCalledWith(10, 3);
     });
 
     it('should throw BadRequestException if insufficient stock', async () => {
+      mockProductValidator.validateStockChangeQuantity.mockReturnValue(undefined);
       mockPrismaService.product.findUnique.mockResolvedValue(mockProduct);
+      mockProductValidator.validateSufficientStock.mockImplementation(() => {
+        throw new BadRequestException('Insufficient stock. Available: 10, Requested: 15');
+      });
 
       await expect(service.decrementStock({ productId: 'prod-1', quantity: 15 })).rejects.toThrow(
         BadRequestException,
@@ -371,6 +455,7 @@ describe('ProductsService', () => {
     });
 
     it('should throw NotFoundException if product not found', async () => {
+      mockProductValidator.validateStockChangeQuantity.mockReturnValue(undefined);
       mockPrismaService.product.findUnique.mockResolvedValue(null);
 
       await expect(

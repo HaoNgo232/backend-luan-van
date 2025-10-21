@@ -17,6 +17,9 @@ import {
   CategoryWithRelations,
 } from '@shared/types/product.types';
 import { PrismaService } from '@product-app/prisma/prisma.service';
+import { CategoryMapper } from './mappers/category.mapper';
+import { CategoryValidator } from './validators/category.validator';
+import { CategoryQueryBuilder } from './builders/category-query.builder';
 
 export interface ICategoriesService {
   getById(dto: CategoryIdDto): Promise<CategoryWithRelations>;
@@ -29,7 +32,12 @@ export interface ICategoriesService {
 
 @Injectable()
 export class CategoriesService implements ICategoriesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly mapper: CategoryMapper,
+    private readonly validator: CategoryValidator,
+    private readonly queryBuilder: CategoryQueryBuilder,
+  ) {}
 
   /**
    * Get category by ID with relationships
@@ -49,7 +57,7 @@ export class CategoriesService implements ICategoriesService {
         throw new NotFoundException(`Category with ID ${dto.id} not found`);
       }
 
-      return this.mapToCategoryWithRelations(category);
+      return this.mapper.mapToCategoryWithRelations(category);
     } catch (error) {
       if (error instanceof NotFoundException) throw error;
       console.error('[CategoriesService] getById error:', error);
@@ -75,7 +83,7 @@ export class CategoriesService implements ICategoriesService {
         throw new NotFoundException(`Category with slug '${dto.slug}' not found`);
       }
 
-      return this.mapToCategoryWithRelations(category);
+      return this.mapper.mapToCategoryWithRelations(category);
     } catch (error) {
       if (error instanceof NotFoundException) throw error;
       console.error('[CategoriesService] getBySlug error:', error);
@@ -90,37 +98,19 @@ export class CategoriesService implements ICategoriesService {
     try {
       const page = query.page ?? 1;
       const pageSize = query.pageSize ?? 20;
-      const skip = (page - 1) * pageSize;
+      const { skip, take } = this.queryBuilder.getPaginationParams(query);
 
-      // Build where clause for filters
-      const where: Record<string, unknown> = {};
+      const where = await this.queryBuilder.buildWhereClause(query);
 
-      // Search filter
-      if (query.q) {
-        where.OR = [
-          { name: { contains: query.q, mode: 'insensitive' } },
-          { description: { contains: query.q, mode: 'insensitive' } },
-        ];
-      }
-
-      // Parent filter - if parentSlug provided, find categories under that parent
-      if (query.parentSlug) {
-        const parentCategory = await this.prisma.category.findUnique({
-          where: { slug: query.parentSlug },
-        });
-
-        if (parentCategory) {
-          where.parentId = parentCategory.id;
-        } else {
-          // If parent not found, return empty results
-          return {
-            categories: [],
-            total: 0,
-            page,
-            pageSize,
-            totalPages: 0,
-          };
-        }
+      // Check if parent was not found
+      if (where.id && (where.id as Record<string, unknown>).equals === 'PARENT_NOT_FOUND') {
+        return {
+          categories: [],
+          total: 0,
+          page,
+          pageSize,
+          totalPages: 0,
+        };
       }
 
       // Execute queries in parallel
@@ -132,7 +122,7 @@ export class CategoriesService implements ICategoriesService {
             children: true,
           },
           skip,
-          take: pageSize,
+          take,
           orderBy: {
             name: 'asc',
           },
@@ -140,10 +130,10 @@ export class CategoriesService implements ICategoriesService {
         this.prisma.category.count({ where }),
       ]);
 
-      const totalPages = Math.ceil(total / pageSize);
+      const { totalPages } = this.queryBuilder.getPaginationMetadata(page, pageSize, total);
 
       return {
-        categories: categories.map(c => this.mapToCategoryResponse(c)),
+        categories: this.mapper.mapManyToCategoryResponse(categories),
         total,
         page,
         pageSize,
@@ -163,22 +153,11 @@ export class CategoriesService implements ICategoriesService {
   async create(dto: CategoryCreateDto): Promise<CategoryResponse> {
     try {
       // Validate unique slug
-      const existing = await this.prisma.category.findUnique({
-        where: { slug: dto.slug },
-      });
-
-      if (existing) {
-        throw new ConflictException(`Category with slug '${dto.slug}' already exists`);
-      }
+      await this.validator.validateSlugUnique(dto.slug);
 
       // Validate parent exists if provided
       if (dto.parentId) {
-        const parent = await this.prisma.category.findUnique({
-          where: { id: dto.parentId },
-        });
-        if (!parent) {
-          throw new BadRequestException(`Parent category with ID ${dto.parentId} not found`);
-        }
+        await this.validator.validateParentExists(dto.parentId);
       }
 
       // Create category
@@ -196,7 +175,7 @@ export class CategoriesService implements ICategoriesService {
       });
 
       console.log(`[CategoriesService] Created category: ${category.id}`);
-      return this.mapToCategoryResponse(category);
+      return this.mapper.mapToCategoryResponse(category);
     } catch (error) {
       if (error instanceof ConflictException || error instanceof BadRequestException) {
         throw error;
@@ -215,8 +194,8 @@ export class CategoriesService implements ICategoriesService {
   async update(id: string, dto: CategoryUpdateDto): Promise<CategoryResponse> {
     try {
       const existing = await this.getExistingCategory(id);
-      await this.validateSlugForUpdate(dto.slug, existing.slug);
-      await this.validateParentUpdate(id, dto.parentId);
+      await this.validator.validateSlugForUpdate(dto.slug, existing.slug);
+      await this.validator.validateParentUpdate(id, dto.parentId);
 
       const updateData = this.buildUpdateData(dto);
       const category = await this.prisma.category.update({
@@ -229,7 +208,7 @@ export class CategoriesService implements ICategoriesService {
       });
 
       console.log(`[CategoriesService] Updated category: ${id}`);
-      return this.mapToCategoryResponse(category);
+      return this.mapper.mapToCategoryResponse(category);
     } catch (error) {
       if (
         error instanceof NotFoundException ||
@@ -250,31 +229,7 @@ export class CategoriesService implements ICategoriesService {
    */
   async delete(id: string): Promise<{ success: boolean; id: string }> {
     try {
-      const existing = await this.prisma.category.findUnique({
-        where: { id },
-        include: {
-          children: true,
-          products: true,
-        },
-      });
-
-      if (!existing) {
-        throw new NotFoundException(`Category with ID ${id} not found`);
-      }
-
-      // Prevent deletion if category has children
-      if (existing.children.length > 0) {
-        throw new BadRequestException(
-          'Cannot delete category with child categories. Delete or reassign children first.',
-        );
-      }
-
-      // Prevent deletion if category has products
-      if (existing.products.length > 0) {
-        throw new BadRequestException(
-          'Cannot delete category with products. Reassign products first.',
-        );
-      }
+      await this.validator.validateCanDelete(id);
 
       await this.prisma.category.delete({
         where: { id },
@@ -310,62 +265,6 @@ export class CategoriesService implements ICategoriesService {
   }
 
   /**
-   * Validate slug uniqueness when updating
-   * @throws ConflictException if slug already exists
-   * @private
-   */
-  private async validateSlugForUpdate(
-    newSlug: string | undefined,
-    currentSlug: string,
-  ): Promise<void> {
-    if (!newSlug || newSlug === currentSlug) {
-      return;
-    }
-
-    const slugExists = await this.prisma.category.findUnique({
-      where: { slug: newSlug },
-    });
-
-    if (slugExists) {
-      throw new ConflictException(`Category with slug '${newSlug}' already exists`);
-    }
-  }
-
-  /**
-   * Validate parent category update
-   * @throws BadRequestException if parent validation fails
-   * @private
-   */
-  private async validateParentUpdate(id: string, parentId: string | undefined): Promise<void> {
-    if (parentId === undefined) {
-      return;
-    }
-
-    if (parentId === id) {
-      throw new BadRequestException('Category cannot be its own parent');
-    }
-
-    if (!parentId) {
-      return;
-    }
-
-    const parent = await this.prisma.category.findUnique({
-      where: { id: parentId },
-    });
-
-    if (!parent) {
-      throw new BadRequestException(`Parent category with ID ${parentId} not found`);
-    }
-
-    const hasCircularReference = await this.checkCircularReference(parentId, id);
-    if (hasCircularReference) {
-      throw new BadRequestException(
-        'Cannot create circular reference: the new parent is a descendant of this category',
-      );
-    }
-  }
-
-  /**
    * Build update data object from DTO
    * @private
    */
@@ -388,168 +287,5 @@ export class CategoriesService implements ICategoriesService {
     if (dto.parentId !== undefined) updateData.parentId = dto.parentId;
 
     return updateData;
-  }
-
-  /**
-   * Check for circular reference in category hierarchy
-   * Recursively traverses up the parent chain to detect if categoryId is an ancestor of potentialParentId
-   * @param potentialParentId The ID of the category that will become the parent
-   * @param categoryId The ID of the category being updated
-   * @returns Promise<boolean> true if circular reference detected
-   * @private
-   */
-  private async checkCircularReference(
-    potentialParentId: string,
-    categoryId: string,
-  ): Promise<boolean> {
-    let currentId: string | null = potentialParentId;
-    const visitedIds = new Set<string>([categoryId]); // Track visited to prevent infinite loops
-
-    // Traverse up the parent chain
-    while (currentId) {
-      // If we find the category we're trying to update in the ancestor chain, it's circular
-      if (visitedIds.has(currentId)) {
-        return true; // Circular reference detected
-      }
-
-      visitedIds.add(currentId);
-
-      // Get the parent of current category
-      const current = await this.prisma.category.findUnique({
-        where: { id: currentId },
-        select: { parentId: true },
-      });
-
-      if (!current) {
-        break; // Category not found, break the loop
-      }
-
-      currentId = current.parentId; // Move up to parent
-    }
-
-    return false; // No circular reference found
-  }
-
-  /**
-   * Map Prisma category to CategoryResponse
-   */
-  private mapToCategoryResponse(category: {
-    id: string;
-    name: string;
-    slug: string;
-    description: string | null;
-    parentId: string | null;
-    createdAt: Date;
-    updatedAt: Date;
-    parent?: {
-      id: string;
-      name: string;
-      slug: string;
-      description: string | null;
-      parentId: string | null;
-      createdAt: Date;
-      updatedAt: Date;
-    } | null;
-    children?: Array<{
-      id: string;
-      name: string;
-      slug: string;
-      description: string | null;
-      parentId: string | null;
-      createdAt: Date;
-      updatedAt: Date;
-    }>;
-  }): CategoryResponse {
-    return {
-      id: category.id,
-      name: category.name,
-      slug: category.slug,
-      description: category.description,
-      parentId: category.parentId,
-      createdAt: category.createdAt,
-      updatedAt: category.updatedAt,
-      parent: category.parent
-        ? {
-            id: category.parent.id,
-            name: category.parent.name,
-            slug: category.parent.slug,
-            description: category.parent.description,
-            parentId: category.parent.parentId,
-            createdAt: category.parent.createdAt,
-            updatedAt: category.parent.updatedAt,
-          }
-        : null,
-      children: category.children?.map(child => ({
-        id: child.id,
-        name: child.name,
-        slug: child.slug,
-        description: child.description,
-        parentId: child.parentId,
-        createdAt: child.createdAt,
-        updatedAt: child.updatedAt,
-      })),
-    };
-  }
-
-  /**
-   * Map Prisma category to CategoryWithRelations
-   */
-  private mapToCategoryWithRelations(category: {
-    id: string;
-    name: string;
-    slug: string;
-    description: string | null;
-    parentId: string | null;
-    createdAt: Date;
-    updatedAt: Date;
-    parent?: {
-      id: string;
-      name: string;
-      slug: string;
-      description: string | null;
-      parentId: string | null;
-      createdAt: Date;
-      updatedAt: Date;
-    } | null;
-    children?: Array<{
-      id: string;
-      name: string;
-      slug: string;
-      description: string | null;
-      parentId: string | null;
-      createdAt: Date;
-      updatedAt: Date;
-    }>;
-  }): CategoryWithRelations {
-    return {
-      id: category.id,
-      name: category.name,
-      slug: category.slug,
-      description: category.description,
-      parentId: category.parentId,
-      createdAt: category.createdAt,
-      updatedAt: category.updatedAt,
-      parent: category.parent
-        ? {
-            id: category.parent.id,
-            name: category.parent.name,
-            slug: category.parent.slug,
-            description: category.parent.description,
-            parentId: category.parent.parentId,
-            createdAt: category.parent.createdAt,
-            updatedAt: category.parent.updatedAt,
-          }
-        : null,
-      children:
-        category.children?.map(child => ({
-          id: child.id,
-          name: child.name,
-          slug: child.slug,
-          description: child.description,
-          parentId: child.parentId,
-          createdAt: child.createdAt,
-          updatedAt: child.updatedAt,
-        })) ?? [],
-    };
   }
 }
