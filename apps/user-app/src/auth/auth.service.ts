@@ -1,26 +1,18 @@
-import {
-  Injectable,
-  UnauthorizedException,
-  BadRequestException,
-} from '@nestjs/common';
+import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { LoginDto, VerifyDto, RefreshDto } from '@shared/dto/auth.dto';
+import { AuthTokens, JwtPayload } from '@shared/main';
 import { prisma } from '@user-app/prisma/prisma.client';
 import * as bcrypt from 'bcryptjs';
 import * as jwt from 'jsonwebtoken';
 
-interface JwtPayload {
-  userId: string;
-  email: string;
-  role: string;
-}
-
-interface AuthTokens {
-  accessToken: string;
-  refreshToken: string;
+export interface IAuthService {
+  login(dto: LoginDto): Promise<AuthTokens & { user: object }>;
+  verify(dto: VerifyDto): Promise<JwtPayload>;
+  refresh(dto: RefreshDto): Promise<AuthTokens>;
 }
 
 @Injectable()
-export class AuthService {
+export class AuthService implements IAuthService {
   private readonly jwtSecret: string;
   private readonly jwtExpiresIn: string;
   private readonly jwtRefreshExpiresIn: string;
@@ -48,10 +40,7 @@ export class AuthService {
       }
 
       // Verify password
-      const isPasswordValid = await bcrypt.compare(
-        dto.password,
-        user.passwordHash,
-      );
+      const isPasswordValid = await bcrypt.compare(dto.password, user.passwordHash);
 
       if (!isPasswordValid) {
         throw new UnauthorizedException('Invalid email or password');
@@ -111,10 +100,7 @@ export class AuthService {
   async refresh(dto: RefreshDto): Promise<AuthTokens> {
     try {
       // Verify refresh token
-      const decoded = jwt.verify(
-        dto.refreshToken,
-        this.jwtSecret,
-      ) as JwtPayload;
+      const decoded = jwt.verify(dto.refreshToken, this.jwtSecret) as JwtPayload;
 
       // Verify user still exists and is active
       const user = await prisma.user.findUnique({
@@ -138,10 +124,7 @@ export class AuthService {
         role: user.role,
       });
     } catch (error) {
-      if (
-        error instanceof jwt.JsonWebTokenError ||
-        error instanceof jwt.TokenExpiredError
-      ) {
+      if (error instanceof jwt.JsonWebTokenError || error instanceof jwt.TokenExpiredError) {
         throw new UnauthorizedException('Invalid or expired refresh token');
       }
       console.error('[AuthService] refresh error:', error);

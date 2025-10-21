@@ -72,3 +72,11 @@ export const EVENTS = {
     SNAPSHOT_LIST: 'ar.snapshotList',
   },
 } as const;
+
+export const NATS_SERVICES = {
+  USER: 'user-service',
+  PRODUCT: 'product-service',
+  ORDER: 'order-service',
+  PAYMENT: 'payment-service',
+  REPORTER: 'reporter-service',
+};

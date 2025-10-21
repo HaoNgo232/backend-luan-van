@@ -1,33 +1,25 @@
-import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-} from '@nestjs/common';
-import {
-  CreateUserDto,
-  UpdateUserDto,
-  ListUsersDto,
-} from '@shared/dto/user.dto';
-import { UserResponse } from '@shared/types/user.types';
+import { Injectable, NotFoundException, BadRequestException, Inject } from '@nestjs/common';
+import { CreateUserDto, UpdateUserDto, ListUsersDto } from '@shared/dto/user.dto';
+import { ListUsersResponse, UserResponse } from '@shared/main';
 import { prisma } from '@user-app/prisma/prisma.client';
 import * as bcrypt from 'bcryptjs';
 
+export interface IUserService {
+  findById(id: string): Promise<UserResponse>;
+  findByEmail(email: string): Promise<UserResponse>;
+  create(dto: CreateUserDto): Promise<UserResponse>;
+  update(id: string, dto: UpdateUserDto): Promise<UserResponse>;
+  deactivate(id: string): Promise<{ message: string }>;
+  list(query: ListUsersDto): Promise<ListUsersResponse>;
+}
+
 @Injectable()
-export class UsersService {
+export class UsersService implements IUserService {
   async findById(id: string): Promise<UserResponse> {
     try {
       const user = await prisma.user.findUnique({
         where: { id },
-        select: {
-          id: true,
-          email: true,
-          fullName: true,
-          phone: true,
-          role: true,
-          isActive: true,
-          createdAt: true,
-          updatedAt: true,
-        },
+        select: { id: true, email: true, fullName: true, phone: true, role: true, isActive: true },
       });
 
       if (!user) {
@@ -36,9 +28,7 @@ export class UsersService {
 
       return user;
     } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
+      if (error instanceof NotFoundException) throw error;
       console.error('[UsersService] findById error:', error);
       throw new BadRequestException('Failed to find user');
     }
@@ -48,23 +38,16 @@ export class UsersService {
     try {
       const user = await prisma.user.findUnique({
         where: { email },
-        select: {
-          id: true,
-          email: true,
-          fullName: true,
-          phone: true,
-          role: true,
-          isActive: true,
-          createdAt: true,
-          updatedAt: true,
-        },
+        select: { id: true, email: true, fullName: true, phone: true, role: true, isActive: true },
       });
 
       if (!user) {
         throw new NotFoundException(`User with email ${email} not found`);
       }
+
       return user;
     } catch (error) {
+      if (error instanceof NotFoundException) throw error;
       console.error('[UsersService] findByEmail error:', error);
       throw new BadRequestException('Failed to find user by email');
     }
@@ -75,16 +58,6 @@ export class UsersService {
       // Check if user already exists
       const existingUser = await prisma.user.findUnique({
         where: { email: dto.email },
-        select: {
-          id: true,
-          email: true,
-          fullName: true,
-          phone: true,
-          role: true,
-          isActive: true,
-          createdAt: true,
-          updatedAt: true,
-        },
       });
 
       if (existingUser) {
@@ -111,9 +84,7 @@ export class UsersService {
 
       return user;
     } catch (error) {
-      if (error instanceof BadRequestException) {
-        throw error;
-      }
+      if (error instanceof BadRequestException) throw error;
       console.error('[UsersService] create error:', error);
       throw new BadRequestException('Failed to create user');
     }
@@ -121,16 +92,8 @@ export class UsersService {
 
   async update(id: string, dto: UpdateUserDto): Promise<UserResponse> {
     try {
-      // Check if user exists
-      const existingUser = await prisma.user.findUnique({
-        where: { id },
-      });
+      await this.validateUserExists(id);
 
-      if (!existingUser) {
-        throw new NotFoundException(`User with ID ${id} not found`);
-      }
-
-      // Update user
       const user = await prisma.user.update({
         where: { id },
         data: {
@@ -139,23 +102,12 @@ export class UsersService {
           role: dto.role,
           isActive: dto.isActive,
         },
-        select: {
-          id: true,
-          email: true,
-          fullName: true,
-          phone: true,
-          role: true,
-          isActive: true,
-          createdAt: true,
-          updatedAt: true,
-        },
+        select: { id: true, email: true, fullName: true, phone: true, role: true, isActive: true },
       });
 
       return user;
     } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
+      if (error instanceof NotFoundException) throw error;
       console.error('[UsersService] update error:', error);
       throw new BadRequestException('Failed to update user');
     }
@@ -163,13 +115,7 @@ export class UsersService {
 
   async deactivate(id: string): Promise<{ message: string }> {
     try {
-      const existingUser = await prisma.user.findUnique({
-        where: { id },
-      });
-
-      if (!existingUser) {
-        throw new NotFoundException(`User with ID ${id} not found`);
-      }
+      await this.validateUserExists(id);
 
       await prisma.user.update({
         where: { id },
@@ -178,31 +124,29 @@ export class UsersService {
 
       return { message: `User ${id} deactivated successfully` };
     } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
+      if (error instanceof NotFoundException) throw error;
       console.error('[UsersService] deactivate error:', error);
       throw new BadRequestException('Failed to deactivate user');
     }
   }
 
-  async list(query: ListUsersDto): Promise<{
-    users: Array<UserResponse>;
-    total: number;
-    page: number;
-    pageSize: number;
-  }> {
+  async list(query: ListUsersDto): Promise<ListUsersResponse> {
     try {
       const page = query.page || 1;
       const pageSize = query.pageSize || 10;
       const skip = (page - 1) * pageSize;
 
-      const where = query.q
+      const where = query.search
         ? {
             OR: [
-              { email: { contains: query.q, mode: 'insensitive' as const } },
               {
-                fullName: { contains: query.q, mode: 'insensitive' as const },
+                email: { contains: query.search, mode: 'insensitive' as const },
+              },
+              {
+                fullName: {
+                  contains: query.search,
+                  mode: 'insensitive' as const,
+                },
               },
             ],
           }
@@ -218,15 +162,17 @@ export class UsersService {
         prisma.user.count({ where }),
       ]);
 
-      return {
-        users,
-        total,
-        page,
-        pageSize,
-      };
+      return { users, total, page, pageSize };
     } catch (error) {
       console.error('[UsersService] list error:', error);
       throw new BadRequestException('Failed to list users');
+    }
+  }
+
+  private async validateUserExists(id: string): Promise<void> {
+    const user = await prisma.user.findUnique({ where: { id } });
+    if (!user) {
+      throw new NotFoundException(`User with ID ${id} not found`);
     }
   }
 }

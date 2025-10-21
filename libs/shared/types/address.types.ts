@@ -1,4 +1,4 @@
-export interface AddressResponse {
+export type AddressResponse = {
   id: string;
   userId: string;
   fullName: string;
@@ -9,4 +9,4 @@ export interface AddressResponse {
   city: string;
   isDefault: boolean;
   createdAt: Date;
-}
+};

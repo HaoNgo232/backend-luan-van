@@ -1,8 +1,4 @@
-import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import {
   AddressCreateDto,
   AddressUpdateDto,
@@ -12,8 +8,16 @@ import {
 import { AddressResponse } from '@shared/types/address.types';
 import { PrismaService } from '@user-app/prisma/prisma.service';
 
+export interface IAddressService {
+  listByUser(dto: AddressListByUserDto): Promise<AddressResponse[]>;
+  create(dto: AddressCreateDto): Promise<AddressResponse>;
+  update(id: string, dto: AddressUpdateDto): Promise<AddressResponse>;
+  delete(id: string): Promise<{ success: boolean; message: string }>;
+  setDefaultAddress(dto: AddressSetDefaultDto): Promise<AddressResponse>;
+}
+
 @Injectable()
-export class AddressService {
+export class AddressService implements IAddressService {
   constructor(private readonly prisma: PrismaService) {}
 
   async listByUser(dto: AddressListByUserDto): Promise<AddressResponse[]> {

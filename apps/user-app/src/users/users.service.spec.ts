@@ -5,6 +5,7 @@ import { UsersService } from './users.service';
 import { CreateUserDto, UpdateUserDto, UserRole } from '@shared/dto/user.dto';
 import * as bcrypt from 'bcryptjs';
 import { prisma } from '@user-app/prisma/prisma.client';
+import { UserResponse } from '@shared/main';
 
 // Mock Prisma
 jest.mock('@user-app/prisma/prisma.client', () => ({
@@ -42,15 +43,13 @@ describe('UsersService', () => {
 
   describe('findById', () => {
     it('should return user when found', async () => {
-      const mockUser = {
+      const mockUser: UserResponse = {
         id: '1',
         email: 'test@example.com',
         fullName: 'Test User',
         phone: '1234567890',
         role: 'CUSTOMER',
         isActive: true,
-        createdAt: new Date(),
-        updatedAt: new Date(),
       };
 
       (prisma.user.findUnique as jest.Mock).mockResolvedValue(mockUser);
@@ -67,8 +66,6 @@ describe('UsersService', () => {
           phone: true,
           role: true,
           isActive: true,
-          createdAt: true,
-          updatedAt: true,
         },
       });
     });
@@ -118,9 +115,7 @@ describe('UsersService', () => {
         email: createDto.email,
       });
 
-      await expect(service.create(createDto)).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(service.create(createDto)).rejects.toThrow(BadRequestException);
     });
   });
 
@@ -161,8 +156,6 @@ describe('UsersService', () => {
           phone: true,
           role: true,
           isActive: true,
-          createdAt: true,
-          updatedAt: true,
         },
       });
     });
@@ -170,9 +163,9 @@ describe('UsersService', () => {
     it('should throw NotFoundException when user not found', async () => {
       (prisma.user.findUnique as jest.Mock).mockResolvedValue(null);
 
-      await expect(
-        service.update('999', { fullName: 'Test', role: UserRole.ADMIN }),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.update('999', { fullName: 'Test', role: UserRole.ADMIN })).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -204,7 +197,7 @@ describe('UsersService', () => {
     });
 
     it('should filter users by search query', async () => {
-      const mockUsers = [
+      const mockUsers: UserResponse[] = [
         {
           id: '1',
           email: 'john@example.com',
@@ -219,7 +212,7 @@ describe('UsersService', () => {
       (prisma.user.findMany as jest.Mock).mockResolvedValue(mockUsers);
       (prisma.user.count as jest.Mock).mockResolvedValue(1);
 
-      await service.list({ q: 'john', page: 1, pageSize: 10 });
+      await service.list({ search: 'john', page: 1, pageSize: 10 });
 
       expect(prisma.user.findMany).toHaveBeenCalledWith(
         expect.objectContaining({

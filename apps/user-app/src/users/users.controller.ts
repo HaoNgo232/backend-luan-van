@@ -2,43 +2,51 @@ import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { UsersService } from '@user-app/users/users.service';
 import { EVENTS } from '@shared/events';
-import {
-  CreateUserDto,
-  UpdateUserDto,
-  ListUsersDto,
-} from '@shared/dto/user.dto';
+import { CreateUserDto, UpdateUserDto, ListUsersDto } from '@shared/dto/user.dto';
+import { ListUsersResponse, UserResponse } from '@shared/main';
+
+export interface IUsersController {
+  findById(id: string): Promise<UserResponse>;
+  findByEmail(email: string): Promise<UserResponse>;
+  create(dto: CreateUserDto): Promise<UserResponse>;
+  update(payload: { id: string; dto: UpdateUserDto }): Promise<UserResponse>;
+  deactivate(id: string): Promise<{ message: string }>;
+  list(query: ListUsersDto): Promise<ListUsersResponse>;
+}
 
 @Controller()
-export class UsersController {
+export class UsersController implements IUsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @MessagePattern(EVENTS.USER.FIND_BY_ID)
-  findById(@Payload() id: string) {
+  findById(@Payload() id: string): Promise<UserResponse> {
     return this.usersService.findById(id);
   }
 
   @MessagePattern(EVENTS.USER.FIND_BY_EMAIL)
-  findByEmail(@Payload() email: string) {
+  findByEmail(@Payload() email: string): Promise<UserResponse> {
     return this.usersService.findByEmail(email);
   }
 
   @MessagePattern(EVENTS.USER.CREATE)
-  create(@Payload() dto: CreateUserDto) {
+  create(@Payload() dto: CreateUserDto): Promise<UserResponse> {
     return this.usersService.create(dto);
   }
 
   @MessagePattern(EVENTS.USER.UPDATE)
-  update(@Payload() payload: { id: string; dto: UpdateUserDto }) {
+  update(@Payload() payload: { id: string; dto: UpdateUserDto }): Promise<UserResponse> {
     return this.usersService.update(payload.id, payload.dto);
   }
 
   @MessagePattern(EVENTS.USER.DEACTIVATE)
-  deactivate(@Payload() id: string) {
+  deactivate(@Payload() id: string): Promise<{
+    message: string;
+  }> {
     return this.usersService.deactivate(id);
   }
 
   @MessagePattern(EVENTS.USER.LIST)
-  list(@Payload() query: ListUsersDto) {
+  list(@Payload() query: ListUsersDto): Promise<ListUsersResponse> {
     return this.usersService.list(query);
   }
 }

@@ -74,5 +74,5 @@ export class ListUsersDto {
 
   @IsOptional()
   @IsString()
-  q?: string;
+  search?: string;
 }
