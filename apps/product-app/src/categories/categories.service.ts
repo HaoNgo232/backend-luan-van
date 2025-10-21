@@ -18,8 +18,17 @@ import {
 } from '@shared/types/product.types';
 import { PrismaService } from '@product-app/prisma/prisma.service';
 
+export interface ICategoriesService {
+  getById(dto: CategoryIdDto): Promise<CategoryWithRelations>;
+  getBySlug(dto: CategorySlugDto): Promise<CategoryWithRelations>;
+  list(query: CategoryListQueryDto): Promise<PaginatedCategoriesResponse>;
+  create(dto: CategoryCreateDto): Promise<CategoryResponse>;
+  update(id: string, dto: CategoryUpdateDto): Promise<CategoryResponse>;
+  delete(id: string): Promise<{ success: boolean; id: string }>;
+}
+
 @Injectable()
-export class CategoriesService {
+export class CategoriesService implements ICategoriesService {
   constructor(private readonly prisma: PrismaService) {}
 
   /**
@@ -238,10 +247,11 @@ export class CategoriesService {
             throw new BadRequestException(`Parent category with ID ${dto.parentId} not found`);
           }
 
-          // Check if the parent is a child of current category (circular reference)
-          if (parent.parentId === id) {
+          // Check for circular reference by traversing up the parent chain
+          const hasCircularReference = await this.checkCircularReference(dto.parentId, id);
+          if (hasCircularReference) {
             throw new BadRequestException(
-              'Cannot create circular reference: parent is already a child of this category',
+              'Cannot create circular reference: the new parent is a descendant of this category',
             );
           }
         }
@@ -330,6 +340,46 @@ export class CategoriesService {
       console.error('[CategoriesService] delete error:', error);
       throw new BadRequestException('Failed to delete category');
     }
+  }
+
+  /**
+   * Check for circular reference in category hierarchy
+   * Recursively traverses up the parent chain to detect if categoryId is an ancestor of potentialParentId
+   * @param potentialParentId The ID of the category that will become the parent
+   * @param categoryId The ID of the category being updated
+   * @returns Promise<boolean> true if circular reference detected
+   * @private
+   */
+  private async checkCircularReference(
+    potentialParentId: string,
+    categoryId: string,
+  ): Promise<boolean> {
+    let currentId: string | null = potentialParentId;
+    const visitedIds = new Set<string>([categoryId]); // Track visited to prevent infinite loops
+
+    // Traverse up the parent chain
+    while (currentId) {
+      // If we find the category we're trying to update in the ancestor chain, it's circular
+      if (visitedIds.has(currentId)) {
+        return true; // Circular reference detected
+      }
+
+      visitedIds.add(currentId);
+
+      // Get the parent of current category
+      const current = await this.prisma.category.findUnique({
+        where: { id: currentId },
+        select: { parentId: true },
+      });
+
+      if (!current) {
+        break; // Category not found, break the loop
+      }
+
+      currentId = current.parentId; // Move up to parent
+    }
+
+    return false; // No circular reference found
   }
 
   /**
