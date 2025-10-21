@@ -10,8 +10,17 @@ import {
   CategoryListQueryDto,
 } from '@shared/dto/category.dto';
 
+export interface ICategoriesController {
+  getById(dto: CategoryIdDto): Promise<any>;
+  getBySlug(dto: CategorySlugDto): Promise<any>;
+  list(query: CategoryListQueryDto): Promise<any>;
+  create(dto: CategoryCreateDto): Promise<any>;
+  update(payload: { id: string; dto: CategoryUpdateDto }): Promise<any>;
+  delete(id: string): Promise<any>;
+}
+
 @Controller()
-export class CategoriesController {
+export class CategoriesController implements ICategoriesController {
   constructor(private readonly categoriesService: CategoriesService) {}
 
   @MessagePattern(EVENTS.CATEGORY.GET_BY_ID)

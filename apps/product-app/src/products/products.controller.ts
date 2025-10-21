@@ -11,8 +11,19 @@ import {
   StockChangeDto,
 } from '@shared/dto/product.dto';
 
+export interface IProductsController {
+  getById(dto: ProductIdDto): Promise<any>;
+  getBySlug(dto: ProductSlugDto): Promise<any>;
+  list(query: ProductListQueryDto): Promise<any>;
+  create(dto: ProductCreateDto): Promise<any>;
+  update(payload: { id: string; dto: ProductUpdateDto }): Promise<any>;
+  delete(id: string): Promise<any>;
+  incrementStock(dto: StockChangeDto): Promise<any>;
+  decrementStock(dto: StockChangeDto): Promise<any>;
+}
+
 @Controller()
-export class ProductsController {
+export class ProductsController implements IProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
   @MessagePattern(EVENTS.PRODUCT.GET_BY_ID)

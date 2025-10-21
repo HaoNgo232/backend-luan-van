@@ -19,8 +19,18 @@ import {
 } from '@shared/types/product.types';
 import { PrismaService } from '@product-app/prisma/prisma.service';
 
+export interface IProductsService {
+  getById(dto: ProductIdDto): Promise<ProductResponse>;
+  getBySlug(dto: ProductSlugDto): Promise<ProductResponse>;
+  list(query: ProductListQueryDto): Promise<PaginatedProductsResponse>;
+  create(dto: ProductCreateDto): Promise<ProductResponse>;
+  update(id: string, dto: ProductUpdateDto): Promise<ProductResponse>;
+  incrementStock(dto: StockChangeDto): Promise<StockChangeResult>;
+  decrementStock(dto: StockChangeDto): Promise<StockChangeResult>;
+}
+
 @Injectable()
-export class ProductsService {
+export class ProductsService implements IProductsService {
   constructor(private readonly prisma: PrismaService) {}
 
   /**

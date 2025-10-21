@@ -214,62 +214,11 @@ export class CategoriesService implements ICategoriesService {
    */
   async update(id: string, dto: CategoryUpdateDto): Promise<CategoryResponse> {
     try {
-      // Check category exists
-      const existing = await this.prisma.category.findUnique({
-        where: { id },
-      });
+      const existing = await this.getExistingCategory(id);
+      await this.validateSlugForUpdate(dto.slug, existing.slug);
+      await this.validateParentUpdate(id, dto.parentId);
 
-      if (!existing) {
-        throw new NotFoundException(`Category with ID ${id} not found`);
-      }
-
-      // Check slug uniqueness if updating slug
-      if (dto.slug && dto.slug !== existing.slug) {
-        const slugExists = await this.prisma.category.findUnique({
-          where: { slug: dto.slug },
-        });
-        if (slugExists) {
-          throw new ConflictException(`Category with slug '${dto.slug}' already exists`);
-        }
-      }
-
-      // Validate parent exists and prevent circular reference
-      if (dto.parentId !== undefined) {
-        if (dto.parentId === id) {
-          throw new BadRequestException('Category cannot be its own parent');
-        }
-
-        if (dto.parentId) {
-          const parent = await this.prisma.category.findUnique({
-            where: { id: dto.parentId },
-          });
-          if (!parent) {
-            throw new BadRequestException(`Parent category with ID ${dto.parentId} not found`);
-          }
-
-          // Check for circular reference by traversing up the parent chain
-          const hasCircularReference = await this.checkCircularReference(dto.parentId, id);
-          if (hasCircularReference) {
-            throw new BadRequestException(
-              'Cannot create circular reference: the new parent is a descendant of this category',
-            );
-          }
-        }
-      }
-
-      // Update category
-      const updateData: {
-        name?: string;
-        slug?: string;
-        description?: string | null;
-        parentId?: string | null;
-      } = {};
-
-      if (dto.name) updateData.name = dto.name;
-      if (dto.slug) updateData.slug = dto.slug;
-      if (dto.description !== undefined) updateData.description = dto.description;
-      if (dto.parentId !== undefined) updateData.parentId = dto.parentId;
-
+      const updateData = this.buildUpdateData(dto);
       const category = await this.prisma.category.update({
         where: { id },
         data: updateData,
@@ -340,6 +289,105 @@ export class CategoriesService implements ICategoriesService {
       console.error('[CategoriesService] delete error:', error);
       throw new BadRequestException('Failed to delete category');
     }
+  }
+
+  /**
+   * Get existing category by ID
+   * @throws NotFoundException if category not found
+   * @private
+   */
+  private async getExistingCategory(id: string): Promise<{ id: string; slug: string }> {
+    const category = await this.prisma.category.findUnique({
+      where: { id },
+      select: { id: true, slug: true },
+    });
+
+    if (!category) {
+      throw new NotFoundException(`Category with ID ${id} not found`);
+    }
+
+    return category;
+  }
+
+  /**
+   * Validate slug uniqueness when updating
+   * @throws ConflictException if slug already exists
+   * @private
+   */
+  private async validateSlugForUpdate(
+    newSlug: string | undefined,
+    currentSlug: string,
+  ): Promise<void> {
+    if (!newSlug || newSlug === currentSlug) {
+      return;
+    }
+
+    const slugExists = await this.prisma.category.findUnique({
+      where: { slug: newSlug },
+    });
+
+    if (slugExists) {
+      throw new ConflictException(`Category with slug '${newSlug}' already exists`);
+    }
+  }
+
+  /**
+   * Validate parent category update
+   * @throws BadRequestException if parent validation fails
+   * @private
+   */
+  private async validateParentUpdate(id: string, parentId: string | undefined): Promise<void> {
+    if (parentId === undefined) {
+      return;
+    }
+
+    if (parentId === id) {
+      throw new BadRequestException('Category cannot be its own parent');
+    }
+
+    if (!parentId) {
+      return;
+    }
+
+    const parent = await this.prisma.category.findUnique({
+      where: { id: parentId },
+    });
+
+    if (!parent) {
+      throw new BadRequestException(`Parent category with ID ${parentId} not found`);
+    }
+
+    const hasCircularReference = await this.checkCircularReference(parentId, id);
+    if (hasCircularReference) {
+      throw new BadRequestException(
+        'Cannot create circular reference: the new parent is a descendant of this category',
+      );
+    }
+  }
+
+  /**
+   * Build update data object from DTO
+   * @private
+   */
+  private buildUpdateData(dto: CategoryUpdateDto): {
+    name?: string;
+    slug?: string;
+    description?: string | null;
+    parentId?: string | null;
+  } {
+    const updateData: {
+      name?: string;
+      slug?: string;
+      description?: string | null;
+      parentId?: string | null;
+    } = {};
+
+    if (dto.name) updateData.name = dto.name;
+    if (dto.slug) updateData.slug = dto.slug;
+    if (dto.description !== undefined) updateData.description = dto.description;
+    if (dto.parentId !== undefined) updateData.parentId = dto.parentId;
+
+    return updateData;
   }
 
   /**
