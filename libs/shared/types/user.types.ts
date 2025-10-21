@@ -28,13 +28,15 @@ export type User = {
   updatedAt: Date;
 } | null;
 
+export type AuthTokens = {
+  accessToken: string;
+  refreshToken: string;
+};
+
 export type JwtPayload = {
   userId: string;
   email: string;
   role: string;
-};
-
-export type AuthTokens = {
-  accessToken: string;
-  refreshToken: string;
+  iat?: number;
+  exp?: number;
 };
