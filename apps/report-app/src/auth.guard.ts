@@ -1,24 +1,33 @@
-import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
-import { verifyJwtFromHeader } from '@shared/auth';
+import { Injectable } from '@nestjs/common';
+import { BaseAuthGuard } from '@shared/guards';
+import { JwtPayload } from '@shared/auth';
 
+/**
+ * Report service authentication guard
+ * Uses stateless JWT validation with role-based access consideration
+ * Reports are typically admin-only, but validation happens at handler level
+ */
 @Injectable()
-export class AuthGuard implements CanActivate {
-  canActivate(context: ExecutionContext): boolean {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    const message = context.switchToRpc().getData();
-    if (
-      typeof message === 'object' &&
-      message !== null &&
-      'headers' in message
-    ) {
-      const token = verifyJwtFromHeader(
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-        message.headers as Record<string, string>,
-      );
-      if (token) {
-        return true;
-      }
-    }
-    return false;
+export class AuthGuard extends BaseAuthGuard {
+  /**
+   * Override service name for logging
+   * @protected
+   */
+  protected getServiceName(): string {
+    return 'ReportService:AuthGuard';
   }
+
+  /**
+   * Optional: Add role-based validation for reports
+   * Uncomment to enforce admin-only access at guard level
+   * @protected
+   */
+  // protected async validateUser(token: JwtPayload): Promise<boolean> {
+  //   // Reports typically require admin role
+  //   if (token.role !== 'admin') {
+  //     this.logWarning(`Non-admin user attempted report access: ${token.userId}`);
+  //     return false;
+  //   }
+  //   return true;
+  // }
 }

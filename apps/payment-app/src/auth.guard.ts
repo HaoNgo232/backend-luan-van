@@ -1,24 +1,23 @@
-import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
-import { verifyJwtFromHeader } from '@shared/auth';
+import { Injectable } from '@nestjs/common';
+import { BaseAuthGuard } from '@shared/guards';
 
+/**
+ * Payment service authentication guard
+ * Uses stateless JWT validation
+ * Payment operations are critical and require authentication
+ * Additional payment-specific validations can be added here
+ */
 @Injectable()
-export class AuthGuard implements CanActivate {
-  canActivate(context: ExecutionContext): boolean {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    const message = context.switchToRpc().getData();
-    if (
-      typeof message === 'object' &&
-      message !== null &&
-      'headers' in message
-    ) {
-      const token = verifyJwtFromHeader(
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-        message.headers as Record<string, string>,
-      );
-      if (token) {
-        return true;
-      }
-    }
-    return false;
+export class AuthGuard extends BaseAuthGuard {
+  /**
+   * Override service name for logging
+   * @protected
+   */
+  protected getServiceName(): string {
+    return 'PaymentService:AuthGuard';
   }
+
+  // Uses default validateUser() implementation from BaseAuthGuard
+  // Future enhancement: Add payment-specific validations
+  // (e.g., verify user payment methods, fraud detection)
 }

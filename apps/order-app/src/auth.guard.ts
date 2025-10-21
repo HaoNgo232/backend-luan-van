@@ -1,24 +1,21 @@
-import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
-import { verifyJwtFromHeader } from '@shared/auth';
+import { Injectable } from '@nestjs/common';
+import { BaseAuthGuard } from '@shared/guards';
 
+/**
+ * Order service authentication guard
+ * Uses stateless JWT validation
+ * All order operations require authentication
+ */
 @Injectable()
-export class AuthGuard implements CanActivate {
-  canActivate(context: ExecutionContext): boolean {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    const message = context.switchToRpc().getData();
-    if (
-      typeof message === 'object' &&
-      message !== null &&
-      'headers' in message
-    ) {
-      const token = verifyJwtFromHeader(
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-        message.headers as Record<string, string>,
-      );
-      if (token) {
-        return true;
-      }
-    }
-    return false;
+export class AuthGuard extends BaseAuthGuard {
+  /**
+   * Override service name for logging
+   * @protected
+   */
+  protected getServiceName(): string {
+    return 'OrderService:AuthGuard';
   }
+
+  // Uses default validateUser() implementation from BaseAuthGuard
+  // Order service trusts JWT tokens for performance
 }

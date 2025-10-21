@@ -1,56 +1,53 @@
-import {
-  CanActivate,
-  ExecutionContext,
-  Injectable,
-  UnauthorizedException,
-} from '@nestjs/common';
-import { verifyJwtFromHeader, JwtPayload } from '@shared/auth';
+import { Injectable } from '@nestjs/common';
+import { BaseAuthGuard } from '@shared/guards';
+import { JwtPayload } from '@shared/auth';
 import { PrismaService } from '@user-app/prisma/prisma.service';
 
+/**
+ * User service authentication guard with database validation
+ * Extends BaseAuthGuard to add user existence and active status checks
+ */
 @Injectable()
-export class AuthGuard implements CanActivate {
-  constructor(private readonly prisma: PrismaService) {}
+export class AuthGuard extends BaseAuthGuard {
+  constructor(private readonly prisma: PrismaService) {
+    super();
+  }
 
-  async canActivate(context: ExecutionContext): Promise<boolean> {
+  /**
+   * Validate user exists and is active in database
+   * @param token Decoded JWT payload
+   * @returns Promise<boolean> true if user exists and is active
+   * @protected
+   */
+  protected async validateUser(token: JwtPayload): Promise<boolean> {
     try {
-      const message: Record<string, unknown> = context.switchToRpc().getData();
-
-      if (
-        typeof message !== 'object' ||
-        message === null ||
-        !('headers' in message)
-      ) {
-        throw new UnauthorizedException('Invalid request format');
-      }
-
-      const token = verifyJwtFromHeader(
-        message.headers as Record<string, string>,
-      );
-
-      if (!token) {
-        throw new UnauthorizedException('Invalid or missing token');
-      }
-
-      // Verify user exists and is active in database
       const user = await this.prisma.user.findUnique({
         where: { id: token.userId },
         select: { id: true, isActive: true, role: true },
       });
 
-      if (!user || !user.isActive) {
-        throw new UnauthorizedException('User not found or inactive');
+      if (!user) {
+        this.logWarning(`User not found: ${token.userId}`);
+        return false;
       }
 
-      // Attach user to message for use in handlers
-      message.user = token;
+      if (!user.isActive) {
+        this.logWarning(`User inactive: ${token.userId}`);
+        return false;
+      }
 
       return true;
     } catch (error) {
-      if (error instanceof UnauthorizedException) {
-        throw error;
-      }
-      console.error('[AuthGuard] Verification error:', error);
-      throw new UnauthorizedException('Authentication failed');
+      this.logError('Database validation error', error);
+      return false;
     }
+  }
+
+  /**
+   * Override service name for logging
+   * @protected
+   */
+  protected getServiceName(): string {
+    return 'UserService:AuthGuard';
   }
 }
