@@ -1,29 +1,27 @@
 import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { LoginDto, VerifyDto, RefreshDto } from '@shared/dto/auth.dto';
-import { AuthTokens, JwtPayload } from '@shared/main';
+import { AuthTokens, JwtService } from '@shared/main';
 import { prisma } from '@user-app/prisma/prisma.client';
 import * as bcrypt from 'bcryptjs';
-import * as jwt from 'jsonwebtoken';
+import * as jose from 'jose';
 
 export interface IAuthService {
-  login(dto: LoginDto): Promise<AuthTokens & { user: object }>;
-  verify(dto: VerifyDto): Promise<JwtPayload>;
+  login(dto: LoginDto): Promise<AuthTokens>;
+  verify(dto: VerifyDto): Promise<jose.JWTPayload>;
   refresh(dto: RefreshDto): Promise<AuthTokens>;
 }
 
 @Injectable()
 export class AuthService implements IAuthService {
-  private readonly jwtSecret: string;
   private readonly jwtExpiresIn: string;
   private readonly jwtRefreshExpiresIn: string;
 
-  constructor() {
-    this.jwtSecret = process.env.JWT_SECRET_KEY || 'default_secret';
+  constructor(private readonly jwtService: JwtService) {
     this.jwtExpiresIn = process.env.JWT_EXPIRES_IN || '15m';
     this.jwtRefreshExpiresIn = process.env.JWT_REFRESH_EXPIRES_IN || '7d';
   }
 
-  async login(dto: LoginDto): Promise<AuthTokens & { user: object }> {
+  async login(dto: LoginDto): Promise<AuthTokens> {
     try {
       // Find user by email
       const user = await prisma.user.findUnique({
@@ -55,12 +53,6 @@ export class AuthService implements IAuthService {
 
       return {
         ...tokens,
-        user: {
-          id: user.id,
-          email: user.email,
-          fullName: user.fullName,
-          role: user.role,
-        },
       };
     } catch (error) {
       if (error instanceof UnauthorizedException) {
@@ -71,13 +63,14 @@ export class AuthService implements IAuthService {
     }
   }
 
-  async verify(dto: VerifyDto): Promise<JwtPayload> {
+  async verify(dto: VerifyDto): Promise<jose.JWTPayload> {
     try {
-      const decoded = jwt.verify(dto.token, this.jwtSecret) as JwtPayload;
+      // Use JwtService for RSA-based verification
+      const decoded = await this.jwtService.verifyToken(dto.token);
 
       // Verify user still exists and is active
       const user = await prisma.user.findUnique({
-        where: { id: decoded.userId },
+        where: { id: decoded.sub },
         select: { id: true, isActive: true },
       });
 
@@ -87,24 +80,22 @@ export class AuthService implements IAuthService {
 
       return decoded;
     } catch (error) {
-      if (error instanceof jwt.JsonWebTokenError) {
-        throw new UnauthorizedException('Invalid token');
+      if (error instanceof UnauthorizedException) {
+        throw error;
       }
-      if (error instanceof jwt.TokenExpiredError) {
-        throw new UnauthorizedException('Token expired');
-      }
+      console.error('[AuthService] verify error:', error);
       throw new UnauthorizedException('Token verification failed');
     }
   }
 
   async refresh(dto: RefreshDto): Promise<AuthTokens> {
     try {
-      // Verify refresh token
-      const decoded = jwt.verify(dto.refreshToken, this.jwtSecret) as JwtPayload;
+      // Verify refresh token with JwtService
+      const decoded = await this.jwtService.verifyToken(dto.refreshToken);
 
       // Verify user still exists and is active
       const user = await prisma.user.findUnique({
-        where: { id: decoded.userId },
+        where: { id: decoded.sub },
         select: {
           id: true,
           email: true,
@@ -118,29 +109,29 @@ export class AuthService implements IAuthService {
       }
 
       // Generate new tokens
-      return this.generateTokens({
+      return await this.generateTokens({
         userId: user.id,
         email: user.email,
         role: user.role,
       });
     } catch (error) {
-      if (error instanceof jwt.JsonWebTokenError || error instanceof jwt.TokenExpiredError) {
-        throw new UnauthorizedException('Invalid or expired refresh token');
+      if (error instanceof UnauthorizedException) {
+        throw error;
       }
       console.error('[AuthService] refresh error:', error);
       throw new BadRequestException('Token refresh failed');
     }
   }
 
-  private generateTokens(payload: JwtPayload): AuthTokens {
+  private async generateTokens(payload: jose.JWTPayload): Promise<AuthTokens> {
     const expiresIn = this.parseExpiresIn(this.jwtExpiresIn);
     const refreshExpiresIn = this.parseExpiresIn(this.jwtRefreshExpiresIn);
 
-    const accessToken = jwt.sign(payload, this.jwtSecret, { expiresIn });
-
-    const refreshToken = jwt.sign(payload, this.jwtSecret, {
-      expiresIn: refreshExpiresIn,
-    });
+    // Use JwtService to sign tokens with RSA private key
+    const [accessToken, refreshToken] = await Promise.all([
+      this.jwtService.signToken(payload, expiresIn),
+      this.jwtService.signToken(payload, refreshExpiresIn),
+    ]);
 
     return {
       accessToken,

@@ -1,14 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import { BaseAuthGuard } from '@shared/guards';
-import { JwtPayload } from '@shared/auth';
+import { JwtService } from '@shared/main';
 
 /**
  * Report service authentication guard
- * Uses stateless JWT validation with role-based access consideration
+ * Uses stateless JWT validation with RSA public key and role-based access consideration
  * Reports are typically admin-only, but validation happens at handler level
  */
 @Injectable()
 export class AuthGuard extends BaseAuthGuard {
+  constructor(jwtService: JwtService) {
+    super(jwtService);
+  }
+
   /**
    * Override service name for logging
    * @protected

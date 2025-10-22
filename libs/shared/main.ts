@@ -15,3 +15,8 @@ export * from './dto/report.dto';
 export * from './dto/ar.dto';
 export * from './filters/rpc-exception.filter';
 export * from './types/user.types';
+
+// JWT module exports
+export * from './jwt/jwt.service';
+export * from './jwt/jwt.module';
+export * from './jwt/interfaces';

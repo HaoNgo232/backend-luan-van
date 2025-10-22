@@ -1,16 +1,21 @@
 import { Injectable } from '@nestjs/common';
 import { BaseAuthGuard } from '@shared/guards';
-import { JwtPayload } from '@shared/auth';
+import { JwtService } from '@shared/main';
 import { PrismaService } from '@user-app/prisma/prisma.service';
+import * as jose from 'jose';
 
 /**
  * User service authentication guard with database validation
  * Extends BaseAuthGuard to add user existence and active status checks
+ * Uses RSA public key for token verification
  */
 @Injectable()
 export class AuthGuard extends BaseAuthGuard {
-  constructor(private readonly prisma: PrismaService) {
-    super();
+  constructor(
+    jwtService: JwtService,
+    private readonly prisma: PrismaService,
+  ) {
+    super(jwtService);
   }
 
   /**
@@ -19,20 +24,20 @@ export class AuthGuard extends BaseAuthGuard {
    * @returns Promise<boolean> true if user exists and is active
    * @protected
    */
-  protected async validateUser(token: JwtPayload): Promise<boolean> {
+  protected async validateUser(payload: jose.JWTPayload): Promise<boolean> {
     try {
       const user = await this.prisma.user.findUnique({
-        where: { id: token.userId },
+        where: { id: payload.sub },
         select: { id: true, isActive: true, role: true },
       });
 
       if (!user) {
-        this.logWarning(`User not found: ${token.userId}`);
+        this.logWarning(`User not found: ${payload.sub}`);
         return false;
       }
 
       if (!user.isActive) {
-        this.logWarning(`User inactive: ${token.userId}`);
+        this.logWarning(`User inactive: ${payload.sub}`);
         return false;
       }
 

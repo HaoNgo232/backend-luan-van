@@ -1,14 +1,19 @@
 import { Injectable } from '@nestjs/common';
 import { BaseAuthGuard } from '@shared/guards';
+import { JwtService } from '@shared/main';
 
 /**
  * Payment service authentication guard
- * Uses stateless JWT validation
+ * Uses stateless JWT validation with RSA public key
  * Payment operations are critical and require authentication
  * Additional payment-specific validations can be added here
  */
 @Injectable()
 export class AuthGuard extends BaseAuthGuard {
+  constructor(jwtService: JwtService) {
+    super(jwtService);
+  }
+
   /**
    * Override service name for logging
    * @protected

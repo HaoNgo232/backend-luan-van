@@ -1,21 +1,31 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
-import { verifyJwtFromHeader, JwtPayload } from '@shared/auth';
+import { JwtService } from '@shared/jwt/jwt.service';
+import type { JwtPayload } from '@shared/jwt/interfaces';
 
 /**
  * Base authentication guard for all microservices
  * Provides common JWT token validation logic with extension points
  * for service-specific validation requirements.
  *
+ * Uses JwtService for RSA-based token verification.
+ *
  * @abstract
  * @example
  * // Simple stateless validation (default)
- * export class AuthGuard extends BaseAuthGuard {}
+ * export class AuthGuard extends BaseAuthGuard {
+ *   constructor(jwtService: JwtService) {
+ *     super(jwtService);
+ *   }
+ * }
  *
  * @example
  * // With custom validation (e.g., database check)
  * export class AuthGuard extends BaseAuthGuard {
- *   constructor(private readonly prisma: PrismaService) {
- *     super();
+ *   constructor(
+ *     jwtService: JwtService,
+ *     private readonly prisma: PrismaService
+ *   ) {
+ *     super(jwtService);
  *   }
  *
  *   protected async validateUser(token: JwtPayload): Promise<boolean> {
@@ -26,6 +36,12 @@ import { verifyJwtFromHeader, JwtPayload } from '@shared/auth';
  */
 @Injectable()
 export abstract class BaseAuthGuard implements CanActivate {
+  /**
+   * Inject JwtService for token verification
+   * Subclasses must pass jwtService to super() in their constructor
+   */
+  constructor(protected readonly jwtService: JwtService) {}
+
   /**
    * Main guard entry point - validates authentication
    * @param context Execution context from NestJS
@@ -45,7 +61,7 @@ export abstract class BaseAuthGuard implements CanActivate {
 
       // Extract and verify JWT token
       const headers = message.headers as Record<string, string>;
-      const decodedToken = this.extractAndVerifyToken(headers);
+      const decodedToken = await this.extractAndVerifyToken(headers);
 
       if (!decodedToken) {
         this.logWarning('Token verification failed');
@@ -83,12 +99,37 @@ export abstract class BaseAuthGuard implements CanActivate {
 
   /**
    * Extract and verify JWT token from request headers
+   * Uses JwtService for RSA-based verification
+   *
    * @param headers Request headers
    * @returns Decoded JWT payload or null if invalid
    * @protected
    */
-  protected extractAndVerifyToken(headers: Record<string, string>): JwtPayload | null {
-    return verifyJwtFromHeader(headers);
+  protected async extractAndVerifyToken(
+    headers: Record<string, string>,
+  ): Promise<JwtPayload | null> {
+    try {
+      const authHeader = headers.authorization || headers.Authorization;
+
+      if (!authHeader || typeof authHeader !== 'string') {
+        return null;
+      }
+
+      const [scheme, token] = authHeader.split(' ');
+
+      if (scheme !== 'Bearer' || !token) {
+        return null;
+      }
+
+      // Use JwtService to verify token with RSA public key
+      const decoded = await this.jwtService.verifyToken(token);
+      return decoded;
+    } catch (error) {
+      this.logWarning(
+        `Token verification error: ${error instanceof Error ? error.message : 'Unknown'}`,
+      );
+      return null;
+    }
   }
 
   /**

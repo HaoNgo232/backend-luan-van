@@ -1,4 +1,3 @@
-import { User } from './../../prisma/generated/client/index.d';
 import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { UsersService } from './users.service';
@@ -163,9 +162,9 @@ describe('UsersService', () => {
     it('should throw NotFoundException when user not found', async () => {
       (prisma.user.findUnique as jest.Mock).mockResolvedValue(null);
 
-      await expect(service.update('999', { fullName: 'Test', role: UserRole.ADMIN })).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.update('999', { fullName: 'Test', role: UserRole.ADMIN }),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
