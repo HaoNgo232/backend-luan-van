@@ -16,6 +16,11 @@ This is a **thesis project** using NestJS microservices with NATS, Prisma, and J
 
 ---
 
+## Shell Preferences
+
+- When generating shell commands, prefer using `zsh` syntax.
+- Assume commands are executed from the project root unless specified otherwise.
+
 ## 🚨 AUTOMATIC QUALITY GATES (AI Must Enforce)
 
 ### Gate 1: Type Safety Enforcement
@@ -405,9 +410,7 @@ export class CreateEntityDto {
 **ENFORCE THIS PATTERN:**
 
 ```typescript
-return firstValueFrom(
-  this.serviceClient.send(EVENT, payload).pipe(timeout(5000), retry(1)),
-);
+return firstValueFrom(this.serviceClient.send(EVENT, payload).pipe(timeout(5000), retry(1)));
 ```
 
 **ALERT IF MISSING:** timeout or retry

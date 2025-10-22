@@ -161,6 +161,32 @@ describe('Authentication (e2e)', () => {
     });
   });
 
+  describe('POST /auth/register', () => {
+    it('should register a new user through user service', async () => {
+      const registerPayload = {
+        email: 'new-user@example.com',
+        password: 'SecurePass123',
+        fullName: 'New User',
+      };
+
+      const mockResponse = {
+        id: 'user-123',
+        email: registerPayload.email,
+        fullName: registerPayload.fullName,
+      };
+
+      userService.send.mockReturnValue(of(mockResponse));
+
+      const response = await request(app.getHttpServer())
+        .post('/auth/register')
+        .send(registerPayload)
+        .expect(201);
+
+      expect(response.body).toEqual(mockResponse);
+      expect(userService.send).toHaveBeenCalledWith('auth.register', registerPayload);
+    });
+  });
+
   describe('GET /auth/me (protected route)', () => {
     it('should return user data with valid token', async () => {
       const mockUser = {

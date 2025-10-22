@@ -216,8 +216,69 @@ docker compose restart nats
 4.  🧪 Write tests with `/writing-test` command
 5.  🔍 Review code with `/code-review` command
 
+## 📊 NATS Monitoring
+
+### Check NATS Status
+
+```bash
+# NATS monitoring endpoint
+curl http://localhost:8222/varz
+
+# Check connections
+curl http://localhost:8222/connz
+
+# Check subscriptions
+curl http://localhost:8222/subsz
+```
+
+### Monitor Gateway Communication
+
+```bash
+# Check all services health
+curl http://localhost:3000/health/services
+
+# Check NATS connection
+curl http://localhost:3000/health
+```
+
+### Common NATS Issues
+
+**Issue: Service unavailable errors**
+
+```bash
+# Check if microservices are running
+docker compose ps
+
+# Check NATS logs
+docker compose logs nats
+
+# Restart NATS
+docker compose restart nats
+```
+
+**Issue: Timeout errors**
+
+```bash
+# Check microservice logs
+docker compose logs user-app
+docker compose logs product-app
+
+# Increase timeout in gateway controllers if needed
+# Default: 5000ms (5 seconds)
+```
+
+**Issue: Queue group not working**
+
+```bash
+# Verify queue configuration in microservices
+# Each service should have unique queue name:
+# user-app: queue: 'user-app'
+# product-app: queue: 'product-app'
+```
+
 ## 🆘 Need Help?
 
 - Check `docs/ai/` for detailed documentation
 - Run `.cursor/commands/` commands for guided workflows
 - Review `docs/knowledge/TESTING.md` for testing guide
+- Monitor NATS: http://localhost:8222

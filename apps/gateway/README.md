@@ -128,16 +128,36 @@ async getCurrentUser(@Req() req) {
 
 ## 🌐 NATS Communication
 
-Gateway giao tiếp với microservices thông qua NATS:
+Gateway giao tiếp với microservices thông qua NATS với timeout và retry mechanism:
 
 ```typescript
-// Example: Forward request to user-service
+// Example: Forward request to user-service với timeout và retry
 async login(dto: LoginDto) {
   return firstValueFrom(
-    this.userService.send(EVENTS.AUTH.LOGIN, dto).pipe(timeout(5000))
+    this.userService.send(EVENTS.AUTH.LOGIN, dto).pipe(
+      timeout(5000),      // Timeout sau 5 giây
+      retry({             // Retry 1 lần nếu fail
+        count: 1,
+        delay: 1000,      // Đợi 1 giây trước khi retry
+      }),
+      catchError(error => {
+        console.error('[Gateway] Login failed:', error);
+        throw new HttpException(
+          error.message || 'Service communication failed',
+          error.statusCode || HttpStatus.INTERNAL_SERVER_ERROR,
+        );
+      }),
+    ),
   );
 }
 ```
+
+### Best Practices:
+
+- ⏱️ **Timeout**: Luôn set timeout để tránh hanging requests
+- 🔄 **Retry**: Retry 1-2 lần cho transient failures
+- 🚨 **Error Handling**: Catch và convert errors sang HTTP responses
+- 📊 **Logging**: Log tất cả communication errors
 
 ## 🚦 Health Check
 

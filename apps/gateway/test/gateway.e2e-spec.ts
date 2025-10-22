@@ -120,4 +120,14 @@ describe('Gateway (e2e)', () => {
       expect(cartService.send).toHaveBeenCalled();
     });
   });
+
+  describe('GET /health/ready', () => {
+    it('should expose readiness information', async () => {
+      const response = await request(app.getHttpServer()).get('/health/ready').expect(200);
+
+      expect(response.body.status).toBe('ok');
+      expect(typeof response.body.timestamp).toBe('string');
+      expect(typeof response.body.uptime).toBe('number');
+    });
+  });
 });
