@@ -5,16 +5,13 @@ import { ValidationPipe } from '@nestjs/common';
 import { AllRpcExceptionsFilter } from '@shared/filters/rpc-exception.filter';
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.createMicroservice<MicroserviceOptions>(
-    UserAppModule,
-    {
-      transport: Transport.NATS,
-      options: {
-        servers: [process.env.NATS_URL ?? 'nats://localhost:4222'],
-        queue: 'user-app',
-      },
+  const app = await NestFactory.createMicroservice<MicroserviceOptions>(UserAppModule, {
+    transport: Transport.NATS,
+    options: {
+      servers: [process.env.NATS_URL ?? 'nats://localhost:4222'],
+      queue: 'user-app',
     },
-  );
+  });
 
   // Global validation for all incoming DTOs
   app.useGlobalPipes(
