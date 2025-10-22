@@ -1,41 +1,16 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Put,
-  Body,
-  Param,
-  Query,
-  UseGuards,
-  Req,
-  Inject,
-  HttpException,
-  HttpStatus,
-} from '@nestjs/common';
+import { Controller, Get, Post, Put, Body, Param, Query, UseGuards, Req } from '@nestjs/common';
+import { Inject } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { OrderCreateDto, OrderUpdateStatusDto, OrderListByUserDto } from '@shared/dto/order.dto';
 import { AuthGuard } from '../auth/auth.guard';
 import { EVENTS } from '@shared/events';
-import { firstValueFrom, timeout, retry, catchError } from 'rxjs';
+import { BaseGatewayController } from '../base.controller';
 
 @Controller('orders')
 @UseGuards(AuthGuard)
-export class OrdersController {
-  constructor(@Inject('ORDER_SERVICE') private readonly orderService: ClientProxy) {}
-
-  private async sendWithRetry<T>(pattern: string, data: unknown): Promise<T> {
-    return firstValueFrom(
-      this.orderService.send<T>(pattern, data).pipe(
-        timeout(5000),
-        retry({ count: 1, delay: 1000 }),
-        catchError(error => {
-          throw new HttpException(
-            error.message || 'Service communication failed',
-            error.statusCode || HttpStatus.INTERNAL_SERVER_ERROR,
-          );
-        }),
-      ),
-    );
+export class OrdersController extends BaseGatewayController {
+  constructor(@Inject('ORDER_SERVICE') protected readonly service: ClientProxy) {
+    super(service);
   }
 
   @Post()

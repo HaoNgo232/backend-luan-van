@@ -1,22 +1,10 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Put,
-  Delete,
-  Body,
-  Param,
-  UseGuards,
-  Req,
-  Inject,
-  HttpException,
-  HttpStatus,
-} from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, Req } from '@nestjs/common';
+import { Inject } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { AddressCreateDto, AddressUpdateDto } from '@shared/dto/address.dto';
 import { AuthGuard } from '../auth/auth.guard';
 import { EVENTS } from '@shared/events';
-import { firstValueFrom, timeout, retry, catchError } from 'rxjs';
+import { BaseGatewayController } from '../base.controller';
 
 /**
  * Addresses Controller
@@ -24,29 +12,9 @@ import { firstValueFrom, timeout, retry, catchError } from 'rxjs';
  */
 @Controller('addresses')
 @UseGuards(AuthGuard)
-export class AddressesController {
-  constructor(@Inject('USER_SERVICE') private readonly userService: ClientProxy) {}
-
-  /**
-   * Forward request to microservice with retry mechanism
-   */
-  private async sendWithRetry<T>(pattern: string, data: unknown): Promise<T> {
-    return firstValueFrom(
-      this.userService.send<T>(pattern, data).pipe(
-        timeout(5000),
-        retry({
-          count: 1,
-          delay: 5000,
-        }),
-        catchError(error => {
-          console.error(`[Gateway] ${pattern} failed:`, error);
-          throw new HttpException(
-            error.message || 'Service communication failed',
-            error.statusCode || HttpStatus.INTERNAL_SERVER_ERROR,
-          );
-        }),
-      ),
-    );
+export class AddressesController extends BaseGatewayController {
+  constructor(@Inject('USER_SERVICE') protected readonly service: ClientProxy) {
+    super(service);
   }
 
   @Get()

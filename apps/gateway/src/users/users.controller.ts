@@ -1,39 +1,15 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Put,
-  Body,
-  Param,
-  Query,
-  UseGuards,
-  Inject,
-  HttpException,
-  HttpStatus,
-} from '@nestjs/common';
+import { Controller, Get, Post, Put, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { Inject } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { CreateUserDto, UpdateUserDto, ListUsersDto } from '@shared/dto/user.dto';
 import { AuthGuard } from '../auth/auth.guard';
 import { EVENTS } from '@shared/events';
-import { firstValueFrom, timeout, retry, catchError } from 'rxjs';
+import { BaseGatewayController } from '../base.controller';
 
 @Controller('users')
-export class UsersController {
-  constructor(@Inject('USER_SERVICE') private readonly userService: ClientProxy) {}
-
-  private async sendWithRetry<T>(pattern: string, data: unknown): Promise<T> {
-    return firstValueFrom(
-      this.userService.send<T>(pattern, data).pipe(
-        timeout(5000),
-        retry({ count: 1, delay: 1000 }),
-        catchError(error => {
-          throw new HttpException(
-            error.message || 'Service communication failed',
-            error.statusCode || HttpStatus.INTERNAL_SERVER_ERROR,
-          );
-        }),
-      ),
-    );
+export class UsersController extends BaseGatewayController {
+  constructor(@Inject('USER_SERVICE') protected readonly service: ClientProxy) {
+    super(service);
   }
 
   @Get()

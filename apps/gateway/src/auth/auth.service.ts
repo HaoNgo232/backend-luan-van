@@ -17,24 +17,6 @@ export class AuthService {
   /**
    * Forward request to user-service with retry
    */
-  private async sendWithRetry<T>(pattern: string, data: unknown): Promise<T> {
-    return firstValueFrom(
-      this.userService.send<T>(pattern, data).pipe(
-        timeout(5000),
-        retry({
-          count: 1, // Retry 1 lần
-          delay: 5000, // Sau 5 giây
-        }),
-        catchError(error => {
-          console.error(`[Gateway] Auth request failed: ${pattern}`, error);
-          throw new HttpException(
-            error.message || 'Authentication service unavailable',
-            error.statusCode || HttpStatus.SERVICE_UNAVAILABLE,
-          );
-        }),
-      ),
-    );
-  }
 
   async register(dto: CreateUserDto) {
     return this.sendWithRetry(EVENTS.AUTH.REGISTER, dto);

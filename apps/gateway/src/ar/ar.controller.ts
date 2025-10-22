@@ -1,37 +1,15 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Query,
-  UseGuards,
-  Inject,
-  HttpException,
-  HttpStatus,
-} from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, UseGuards } from '@nestjs/common';
+import { Inject } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { ARSnapshotCreateDto, ARSnapshotListDto } from '@shared/dto/ar.dto';
 import { AuthGuard } from '../auth/auth.guard';
 import { EVENTS } from '@shared/events';
-import { firstValueFrom, timeout, retry, catchError } from 'rxjs';
+import { BaseGatewayController } from '../base.controller';
 
 @Controller('ar')
-export class ArController {
-  constructor(@Inject('AR_SERVICE') private readonly arService: ClientProxy) {}
-
-  private async sendWithRetry<T>(pattern: string, data: unknown): Promise<T> {
-    return firstValueFrom(
-      this.arService.send<T>(pattern, data).pipe(
-        timeout(5000),
-        retry({ count: 1, delay: 1000 }),
-        catchError(error => {
-          throw new HttpException(
-            error.message || 'Service communication failed',
-            error.statusCode || HttpStatus.INTERNAL_SERVER_ERROR,
-          );
-        }),
-      ),
-    );
+export class ArController extends BaseGatewayController {
+  constructor(@Inject('AR_SERVICE') protected readonly service: ClientProxy) {
+    super(service);
   }
 
   @Post('snapshots')

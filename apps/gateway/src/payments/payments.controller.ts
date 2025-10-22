@@ -1,38 +1,16 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Param,
-  UseGuards,
-  Inject,
-  HttpException,
-  HttpStatus,
-} from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, UseGuards } from '@nestjs/common';
+import { Inject } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { PaymentProcessDto, PaymentVerifyDto } from '@shared/dto/payment.dto';
 import { AuthGuard } from '../auth/auth.guard';
 import { EVENTS } from '@shared/events';
-import { firstValueFrom, timeout, retry, catchError } from 'rxjs';
+import { BaseGatewayController } from '../base.controller';
 
 @Controller('payments')
 @UseGuards(AuthGuard)
-export class PaymentsController {
-  constructor(@Inject('PAYMENT_SERVICE') private readonly paymentService: ClientProxy) {}
-
-  private async sendWithRetry<T>(pattern: string, data: unknown): Promise<T> {
-    return firstValueFrom(
-      this.paymentService.send<T>(pattern, data).pipe(
-        timeout(10000), // Payments cần timeout dài hơn
-        retry({ count: 1, delay: 1000 }),
-        catchError(error => {
-          throw new HttpException(
-            error.message || 'Payment service failed',
-            error.statusCode || HttpStatus.INTERNAL_SERVER_ERROR,
-          );
-        }),
-      ),
-    );
+export class PaymentsController extends BaseGatewayController {
+  constructor(@Inject('PAYMENT_SERVICE') protected readonly service: ClientProxy) {
+    super(service);
   }
 
   @Post('process')

@@ -1,17 +1,5 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Put,
-  Delete,
-  Body,
-  Param,
-  Query,
-  UseGuards,
-  Inject,
-  HttpException,
-  HttpStatus,
-} from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { Inject } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import {
   CategoryCreateDto,
@@ -20,25 +8,12 @@ import {
 } from '@shared/dto/category.dto';
 import { AuthGuard } from '../auth/auth.guard';
 import { EVENTS } from '@shared/events';
-import { firstValueFrom, timeout, retry, catchError } from 'rxjs';
+import { BaseGatewayController } from '../base.controller';
 
 @Controller('categories')
-export class CategoriesController {
-  constructor(@Inject('PRODUCT_SERVICE') private readonly productService: ClientProxy) {}
-
-  private async sendWithRetry<T>(pattern: string, data: unknown): Promise<T> {
-    return firstValueFrom(
-      this.productService.send<T>(pattern, data).pipe(
-        timeout(5000),
-        retry({ count: 1, delay: 1000 }),
-        catchError(error => {
-          throw new HttpException(
-            error.message || 'Service communication failed',
-            error.statusCode || HttpStatus.INTERNAL_SERVER_ERROR,
-          );
-        }),
-      ),
-    );
+export class CategoriesController extends BaseGatewayController {
+  constructor(@Inject('PRODUCT_SERVICE') protected readonly service: ClientProxy) {
+    super(service);
   }
 
   @Get()
