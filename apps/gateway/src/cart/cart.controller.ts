@@ -25,7 +25,7 @@ export class CartController {
     return firstValueFrom(
       this.cartService.send<T>(pattern, data).pipe(
         timeout(5000),
-        retry({ count: 1, delay: 5000 }),
+        retry({ count: 1, delay: 1000 }),
         catchError(error => {
           throw new HttpException(
             error.message || 'Service communication failed',

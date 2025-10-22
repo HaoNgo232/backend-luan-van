@@ -24,7 +24,7 @@ export class PaymentsController {
     return firstValueFrom(
       this.paymentService.send<T>(pattern, data).pipe(
         timeout(10000), // Payments cần timeout dài hơn
-        retry({ count: 1, delay: 5000 }),
+        retry({ count: 1, delay: 1000 }),
         catchError(error => {
           throw new HttpException(
             error.message || 'Payment service failed',
