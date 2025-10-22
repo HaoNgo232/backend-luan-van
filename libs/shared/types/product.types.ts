@@ -1,3 +1,8 @@
+/**
+ * Product Response Types
+ * Based on Product và Category models trong product-app Prisma schema
+ */
+
 // Product response types for API responses
 export type ProductResponse = {
   id: string;
@@ -9,11 +14,11 @@ export type ProductResponse = {
   description: string | null;
   imageUrls: string[];
   categoryId: string | null;
-  attributes: Record<string, unknown> | null;
+  attributes: Record<string, unknown> | null; // Json field trong Prisma
   model3dUrl: string | null;
   createdAt: Date;
   updatedAt: Date;
-  category?: CategoryResponse | null;
+  category?: CategoryResponse | null; // Populated từ relation
 };
 
 // Category response types for API responses

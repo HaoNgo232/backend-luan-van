@@ -1,12 +1,16 @@
+/**
+ * User Response Types
+ * Based on User model trong user-app Prisma schema
+ */
 export type UserResponse = {
   id: string;
   email: string;
   fullName: string | null;
   phone: string | null;
-  role: string;
+  role: string; // CUSTOMER, ADMIN
   isActive: boolean;
-  createdAt?: Date;
-  updatedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
 };
 
 export type ListUsersResponse = {
@@ -16,6 +20,10 @@ export type ListUsersResponse = {
   pageSize: number;
 };
 
+/**
+ * Internal User type (bao gồm passwordHash)
+ * CHỈ dùng trong user-service, KHÔNG được expose qua API
+ */
 export type User = {
   id: string;
   email: string;
