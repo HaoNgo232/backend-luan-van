@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { TerminusModule } from '@nestjs/terminus';
 import { HealthController } from '@gateway/health.controller';
 import { GatewayClientsModule } from '@gateway/gateway-clients.module';
@@ -11,7 +11,14 @@ import { OrdersModule } from '@gateway/orders/orders.module';
 import { PaymentsModule } from '@gateway/payments/payments.module';
 import { ArModule } from '@gateway/ar/ar.module';
 import { JwtModule } from '@shared/main';
+import { RateLimitMiddleware } from '@gateway/middleware/rate-limit.middleware';
+import { AuditLogMiddleware } from '@gateway/middleware/audit-log.middleware';
 
+/**
+ * App Module
+ * Main module cho API Gateway
+ * Implement Perimeter Security pattern với middleware stack
+ */
 @Module({
   imports: [
     JwtModule,
@@ -29,4 +36,13 @@ import { JwtModule } from '@shared/main';
   controllers: [HealthController],
   providers: [],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  /**
+   * Configure global middleware cho Perimeter Security
+   * AuditLogMiddleware chạy trước để log tất cả requests
+   * RateLimitMiddleware chạy sau để enforce rate limits
+   */
+  configure(consumer: MiddlewareConsumer): void {
+    consumer.apply(AuditLogMiddleware, RateLimitMiddleware).forRoutes('*');
+  }
+}

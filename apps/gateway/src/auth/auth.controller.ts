@@ -1,55 +1,63 @@
-import { Controller, Post, Body, Get, UseGuards, Req } from '@nestjs/common';
-import { AuthService } from './auth.service';
+import { Controller, Post, Body, Get, UseGuards, Req, Inject } from '@nestjs/common';
+import { ClientProxy } from '@nestjs/microservices';
 import { LoginDto, RefreshDto } from '@shared/dto/auth.dto';
 import { CreateUserDto } from '@shared/dto/user.dto';
 import { AuthGuard } from '@gateway/auth/auth.guard';
+import { BaseGatewayController } from '@gateway/base.controller';
+import { EVENTS } from '@shared/events';
+import { AuthResponse, VerifyResponse } from '@shared/types/auth.types';
+import { UserResponse } from '@shared/types/user.types';
 
 /**
  * Authentication Controller
- * Handles user authentication: login, register, token refresh, and current user info
+ * Gateway endpoint cho authentication - forward requests đến user-service
+ *
+ * Pattern: API Gateway - centralized entry point với authentication
  */
 @Controller('auth')
-export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+export class AuthController extends BaseGatewayController {
+  constructor(@Inject('USER_SERVICE') protected readonly client: ClientProxy) {
+    super(client);
+  }
 
   /**
    * POST /auth/register
-   * Register a new user account
+   * Đăng ký tài khoản mới
    */
   @Post('register')
-  async register(@Body() dto: CreateUserDto) {
-    return this.authService.register(dto);
+  async register(@Body() dto: CreateUserDto): Promise<UserResponse> {
+    return this.send<CreateUserDto, UserResponse>(EVENTS.AUTH.REGISTER, dto);
   }
 
   /**
    * POST /auth/login
-   * Authenticate user and return JWT tokens
+   * Xác thực user và trả về JWT tokens
    */
   @Post('login')
-  async login(@Body() dto: LoginDto) {
-    return this.authService.login(dto);
+  async login(@Body() dto: LoginDto): Promise<AuthResponse> {
+    return this.send<LoginDto, AuthResponse>(EVENTS.AUTH.LOGIN, dto);
   }
 
   /**
    * POST /auth/refresh
-   * Refresh access token using refresh token
+   * Làm mới access token bằng refresh token
    */
   @Post('refresh')
-  async refresh(@Body() dto: RefreshDto) {
-    return this.authService.refresh(dto);
+  async refresh(@Body() dto: RefreshDto): Promise<AuthResponse> {
+    return this.send<RefreshDto, AuthResponse>(EVENTS.AUTH.REFRESH, dto);
   }
 
   /**
    * GET /auth/me
-   * Get current authenticated user information
-   * Requires: Bearer token in Authorization header
+   * Lấy thông tin user hiện tại (protected route)
+   * AuthGuard verify token locally - không cần gọi qua NATS
    */
   @Get('me')
   @UseGuards(AuthGuard)
   async getCurrentUser(
     @Req() req: Request & { user: { userId: string; email: string; role: string } },
-  ) {
-    return this.authService.getCurrentUser(req.user.userId);
+  ): Promise<UserResponse> {
+    return this.send<string, UserResponse>(EVENTS.USER.FIND_BY_ID, req.user.userId);
   }
 
   /**
@@ -57,7 +65,7 @@ export class AuthController {
    * Verify JWT token validity
    */
   @Post('verify')
-  async verify(@Body() dto: { token: string }) {
-    return this.authService.verify(dto);
+  async verify(@Body() dto: { token: string }): Promise<VerifyResponse> {
+    return this.send<{ token: string }, VerifyResponse>(EVENTS.AUTH.VERIFY, dto);
   }
 }
