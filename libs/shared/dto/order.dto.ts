@@ -18,7 +18,7 @@ export enum OrderStatus {
   CANCELLED = 'CANCELLED',
 }
 
-class OrderItemDto {
+export class OrderItemDto {
   @IsNotEmpty()
   @IsString()
   productId: string;

@@ -8,6 +8,7 @@ export const EVENTS = {
     LIST: 'user.list',
   },
   AUTH: {
+    REGISTER: 'auth.register',
     LOGIN: 'auth.login',
     VERIFY: 'auth.verify',
     REFRESH: 'auth.refresh',
