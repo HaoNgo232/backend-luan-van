@@ -23,7 +23,30 @@
 
 ## Description
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+E-commerce Microservices Platform - Luận văn tốt nghiệp  
+Hệ thống thương mại điện tử sử dụng kiến trúc microservices với NestJS, NATS, Prisma.
+
+### 🏗️ Architecture
+
+- **API Gateway**: Single entry point, JWT authentication
+- **Microservices**: User, Product, Cart, Order, Payment, AR, Report
+- **Message Broker**: NATS for inter-service communication
+- **Database**: PostgreSQL với Prisma ORM
+- **Authentication**: RSA-based JWT (asymmetric encryption)
+
+### 🔐 Security Model
+
+Hệ thống áp dụng **Perimeter Security** model:
+
+- Gateway thực hiện authentication (AuthGuard)
+- Microservices tin tưởng message từ NATS (no guards)
+- Chi tiết: [Security Architecture Documentation](./docs/architecture/SECURITY-ARCHITECTURE.md)
+
+### 📚 Documentation
+
+- [Security Architecture](./docs/architecture/SECURITY-ARCHITECTURE.md) - Chi tiết về mô hình bảo mật
+- [Security Quick Reference](./docs/architecture/SECURITY-QUICK-REFERENCE.md) - Hướng dẫn nhanh cho developer
+- [Setup Guide](./SETUP.md) - Hướng dẫn setup project
 
 ## Project setup
 
