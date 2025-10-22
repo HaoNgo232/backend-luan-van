@@ -1,94 +1,136 @@
 import { HttpStatus } from '@nestjs/common';
 
 /**
- * Parsed Error Structure
- * Represents a normalized error object extracted from RpcException
- */
-export interface ParsedError {
-  statusCode: number;
-  message: string;
-  details?: unknown;
-}
-
-/**
- * ErrorParser
- * Responsibility: Extract and normalize error data from RpcException
- *
- * THESIS NOTE: Demonstrates Single Responsibility Principle (SRP)
- * - This class has ONE job: parse errors
- * - No HTTP logic, no detection logic, no building logic
+ * Error Parser Utility
+ * Extracts structured information from RpcException errors
  */
 export class ErrorParser {
   /**
-   * Parse error from RpcException
-   * Handles both object and string error formats
+   * Parse error to extract statusCode, message, and details
    */
-  parse(error: string | object): ParsedError {
+  static parse(error: string | object): {
+    statusCode: number;
+    message: string;
+    details: unknown;
+  } {
     if (typeof error === 'object' && error !== null) {
-      return this.parseObjectError(error as Record<string, unknown>);
+      return this.parseObjectError(error);
     }
 
     if (typeof error === 'string') {
       return this.parseStringError(error);
     }
 
-    return this.getDefaultError();
+    return {
+      statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+      message: 'Internal server error',
+      details: null,
+    };
   }
 
   /**
    * Parse structured error object
    */
-  private parseObjectError(error: Record<string, unknown>): ParsedError {
-    const parsed: ParsedError = {
-      statusCode: this.extractStatusCode(error),
-      message: this.extractMessage(error),
-    };
+  private static parseObjectError(error: object): {
+    statusCode: number;
+    message: string;
+    details: unknown;
+  } {
+    const errorObj = error as Record<string, unknown>;
 
-    if ('error' in error) {
-      parsed.details = error.error;
-    }
+    const statusCode =
+      'statusCode' in errorObj && typeof errorObj.statusCode === 'number'
+        ? errorObj.statusCode
+        : HttpStatus.INTERNAL_SERVER_ERROR;
 
-    return parsed;
+    const message = 'message' in errorObj ? String(errorObj.message) : 'Internal server error';
+
+    const details = 'error' in errorObj ? errorObj.error : null;
+
+    return { statusCode, message, details };
   }
 
   /**
-   * Parse string error (will be enhanced by ErrorDetector)
+   * Parse string error
    */
-  private parseStringError(error: string): ParsedError {
+  private static parseStringError(error: string): {
+    statusCode: number;
+    message: string;
+    details: unknown;
+  } {
+    const lowerError = error.toLowerCase();
+
+    // Detect error type from message
+    if (lowerError.includes('empty response')) {
+      return {
+        statusCode: HttpStatus.SERVICE_UNAVAILABLE,
+        message: 'Service temporarily unavailable',
+        details: null,
+      };
+    }
+
+    if (lowerError.includes('timeout')) {
+      return {
+        statusCode: HttpStatus.REQUEST_TIMEOUT,
+        message: 'Request timeout - service did not respond in time',
+        details: null,
+      };
+    }
+
+    if (lowerError.includes('not found')) {
+      return {
+        statusCode: HttpStatus.NOT_FOUND,
+        message: error,
+        details: null,
+      };
+    }
+
+    if (lowerError.includes('unauthorized')) {
+      return {
+        statusCode: HttpStatus.UNAUTHORIZED,
+        message: error,
+        details: null,
+      };
+    }
+
+    if (lowerError.includes('forbidden')) {
+      return {
+        statusCode: HttpStatus.FORBIDDEN,
+        message: error,
+        details: null,
+      };
+    }
+
     return {
       statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
       message: error,
+      details: null,
     };
   }
 
   /**
-   * Extract status code from error object
+   * Extract message from error for RPC context
    */
-  private extractStatusCode(error: Record<string, unknown>): number {
-    if ('statusCode' in error && typeof error.statusCode === 'number') {
-      return error.statusCode;
+  static extractMessage(error: string | object): string {
+    if (typeof error === 'string') {
+      return error;
     }
-    return HttpStatus.INTERNAL_SERVER_ERROR;
-  }
 
-  /**
-   * Extract message from error object
-   * Uses explicit if-else instead of nested ternary (SonarQube compliance)
-   */
-  private extractMessage(error: Record<string, unknown>): string {
-    if ('message' in error) {
-      return String(error.message);
+    if (typeof error === 'object' && error !== null && 'message' in error) {
+      return String((error as { message: unknown }).message);
     }
+
     return 'Internal server error';
   }
 
   /**
-   * Default error for invalid input
+   * Extract status code from error for RPC context
    */
-  private getDefaultError(): ParsedError {
-    return {
-      statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-      message: 'Internal server error',
-    };
+  static extractStatusCode(error: string | object): number {
+    if (typeof error === 'object' && error !== null && 'statusCode' in error) {
+      return (error as { statusCode: number }).statusCode;
+    }
+
+    return HttpStatus.INTERNAL_SERVER_ERROR;
   }
 }

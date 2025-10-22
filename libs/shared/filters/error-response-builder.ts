@@ -1,65 +1,60 @@
-import { HttpStatus } from '@nestjs/common';
-import { ParsedError } from './error-parser';
-
 /**
- * Error Response Structure
- * Standard format for all error responses
- */
-export interface ErrorResponse {
-  statusCode: number;
-  message: string;
-  error?: string;
-  details?: unknown;
-  timestamp: string;
-}
-
-/**
- * ErrorResponseBuilder
- * Responsibility: Build consistent error response objects
- *
- * THESIS NOTE: Demonstrates Builder Pattern
- * - Constructs complex ErrorResponse objects step by step
- * - Ensures consistent structure across all error responses
+ * Error Response Builder
+ * Constructs standardized error response objects
  */
 export class ErrorResponseBuilder {
   /**
-   * Build HTTP error response for Gateway
+   * Build HTTP error response
    */
-  buildHttpResponse(parsedError: ParsedError): ErrorResponse {
-    const response: ErrorResponse = {
-      statusCode: parsedError.statusCode,
-      message: parsedError.message,
+  static buildHttpResponse(
+    statusCode: number,
+    message: string,
+    details: unknown,
+  ): {
+    statusCode: number;
+    message: string;
+    error?: string;
+    details?: unknown;
+    timestamp: string;
+  } {
+    const errorResponse: {
+      statusCode: number;
+      message: string;
+      error?: string;
+      details?: unknown;
+      timestamp: string;
+    } = {
+      statusCode,
+      message,
       timestamp: new Date().toISOString(),
     };
 
-    // Add details if available
-    if (parsedError.details) {
-      response.details = parsedError.details;
+    if (details) {
+      errorResponse.details = details;
     }
 
-    // Add generic error label for 5xx errors
-    if (this.isServerError(parsedError.statusCode)) {
-      response.error = 'Internal Server Error';
+    if (statusCode >= 500) {
+      errorResponse.error = 'Internal Server Error';
     }
 
-    return response;
+    return errorResponse;
   }
 
   /**
-   * Build RPC error response for Microservices
+   * Build RPC error response
    */
-  buildRpcResponse(parsedError: ParsedError): ErrorResponse {
+  static buildRpcResponse(
+    statusCode: number,
+    message: string,
+  ): {
+    statusCode: number;
+    message: string;
+    timestamp: string;
+  } {
     return {
-      statusCode: parsedError.statusCode,
-      message: parsedError.message,
+      statusCode,
+      message,
       timestamp: new Date().toISOString(),
     };
-  }
-
-  /**
-   * Check if status code is a server error (5xx)
-   */
-  private isServerError(statusCode: number): boolean {
-    return statusCode >= Number(HttpStatus.INTERNAL_SERVER_ERROR);
   }
 }
