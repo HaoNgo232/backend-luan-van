@@ -15,20 +15,18 @@ export function validateEnvironment(): void {
     'DATABASE_URL_REPORT',
   ];
 
-  const missingVars = requiredEnvVars.filter((key) => !process.env[key]);
+  const missingVars = requiredEnvVars.filter(key => !process.env[key]);
 
   if (missingVars.length > 0) {
     throw new Error(
-      `Missing required environment variables:\n${missingVars.map((v) => `  - ${v}`).join('\n')}\n\nPlease check your .env file.`,
+      `Missing required environment variables:\n${missingVars.map(v => `  - ${v}`).join('\n')}\n\nPlease check your .env file.`,
     );
   }
 
   // Validate JWT secret strength (minimum 32 characters)
   const jwtSecret = process.env.JWT_SECRET_KEY || '';
   if (jwtSecret.length < 32) {
-    console.warn(
-      '⚠️  WARNING: JWT_SECRET_KEY should be at least 32 characters for security',
-    );
+    console.warn('⚠️  WARNING: JWT_SECRET_KEY should be at least 32 characters for security');
   }
 
   console.log(' Environment variables validated successfully');

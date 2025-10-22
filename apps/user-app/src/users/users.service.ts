@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException, Inject } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { CreateUserDto, UpdateUserDto, ListUsersDto } from '@shared/dto/user.dto';
 import { ListUsersResponse, UserResponse } from '@shared/main';
 import { prisma } from '@user-app/prisma/prisma.client';
@@ -19,7 +19,16 @@ export class UsersService implements IUserService {
     try {
       const user = await prisma.user.findUnique({
         where: { id },
-        select: { id: true, email: true, fullName: true, phone: true, role: true, isActive: true },
+        select: {
+          id: true,
+          email: true,
+          fullName: true,
+          phone: true,
+          role: true,
+          isActive: true,
+          createdAt: true,
+          updatedAt: true,
+        },
       });
 
       if (!user) {
@@ -38,7 +47,16 @@ export class UsersService implements IUserService {
     try {
       const user = await prisma.user.findUnique({
         where: { email },
-        select: { id: true, email: true, fullName: true, phone: true, role: true, isActive: true },
+        select: {
+          id: true,
+          email: true,
+          fullName: true,
+          phone: true,
+          role: true,
+          isActive: true,
+          createdAt: true,
+          updatedAt: true,
+        },
       });
 
       if (!user) {
@@ -102,7 +120,16 @@ export class UsersService implements IUserService {
           role: dto.role,
           isActive: dto.isActive,
         },
-        select: { id: true, email: true, fullName: true, phone: true, role: true, isActive: true },
+        select: {
+          id: true,
+          email: true,
+          fullName: true,
+          phone: true,
+          role: true,
+          isActive: true,
+          createdAt: true,
+          updatedAt: true,
+        },
       });
 
       return user;

@@ -1,12 +1,5 @@
 import { Type } from 'class-transformer';
-import {
-  IsNotEmpty,
-  IsString,
-  IsEnum,
-  IsNumber,
-  IsPositive,
-  IsObject,
-} from 'class-validator';
+import { IsNotEmpty, IsString, IsEnum, IsNumber, IsPositive, IsObject } from 'class-validator';
 
 export enum PaymentMethod {
   COD = 'COD',
