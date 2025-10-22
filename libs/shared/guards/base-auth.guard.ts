@@ -1,7 +1,6 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@shared/jwt/jwt.service';
-import type { JwtPayload } from '@shared/jwt/interfaces';
-
+import * as jose from 'jose';
 /**
  * Base authentication guard for all microservices
  * Provides common JWT token validation logic with extension points
@@ -75,7 +74,7 @@ export abstract class BaseAuthGuard implements CanActivate {
       const isValid = await this.validateUser(decodedToken, message);
 
       if (!isValid) {
-        this.logWarning(`User validation failed for userId: ${decodedToken.userId}`);
+        this.logWarning(`User validation failed for userId: ${decodedToken.sub}`);
         throw new UnauthorizedException('User validation failed');
       }
 
@@ -107,7 +106,7 @@ export abstract class BaseAuthGuard implements CanActivate {
    */
   protected async extractAndVerifyToken(
     headers: Record<string, string>,
-  ): Promise<JwtPayload | null> {
+  ): Promise<jose.JWTPayload | null> {
     try {
       const authHeader = headers.authorization || headers.Authorization;
 
@@ -138,8 +137,9 @@ export abstract class BaseAuthGuard implements CanActivate {
    * @throws UnauthorizedException if token structure is invalid
    * @protected
    */
-  protected validateTokenStructure(token: JwtPayload): void {
-    if (!token.userId || !token.email || !token.role) {
+  protected validateTokenStructure(payload: jose.JWTPayload): void {
+    // Check for userId (backwards compat) or sub (JOSE standard)
+    if (!payload.sub || !payload.email || !payload.role) {
       this.logWarning('Token missing required fields');
       throw new UnauthorizedException('Invalid token payload');
     }
@@ -170,7 +170,7 @@ export abstract class BaseAuthGuard implements CanActivate {
    */
   protected async validateUser(
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    token: JwtPayload,
+    token: jose.JWTPayload,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     message: unknown,
   ): Promise<boolean> {
@@ -209,10 +209,10 @@ export abstract class BaseAuthGuard implements CanActivate {
 
   /**
    * Log successful authentication
-   * @param token Decoded JWT payload
+   * @param payload Decoded JWT payload
    * @protected
    */
-  protected logSuccess(token: JwtPayload): void {
-    console.log(`[${this.getServiceName()}] Authenticated user: ${token.userId} (${token.role})`);
+  protected logSuccess(payload: jose.JWTPayload): void {
+    console.log(`[${this.getServiceName()}] Authenticated user: ${payload.sub} (${payload.role})`);
   }
 }

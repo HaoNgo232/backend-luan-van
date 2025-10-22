@@ -26,18 +26,25 @@ export class AuthGuard extends BaseAuthGuard {
    */
   protected async validateUser(payload: jose.JWTPayload): Promise<boolean> {
     try {
+      if (!payload.sub) {
+        throw new Error('Token payload must contain sub claim');
+      }
+
+      // Get userId from sub claim (JOSE standard)
+      const userId = payload.sub;
+
       const user = await this.prisma.user.findUnique({
-        where: { id: payload.sub },
+        where: { id: userId },
         select: { id: true, isActive: true, role: true },
       });
 
       if (!user) {
-        this.logWarning(`User not found: ${payload.sub}`);
+        this.logWarning(`User not found: ${userId}`);
         return false;
       }
 
       if (!user.isActive) {
-        this.logWarning(`User inactive: ${payload.sub}`);
+        this.logWarning(`User inactive: ${userId}`);
         return false;
       }
 

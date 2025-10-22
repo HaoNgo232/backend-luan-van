@@ -45,8 +45,8 @@ export class AuthService implements IAuthService {
       }
 
       // Generate tokens
-      const tokens = this.generateTokens({
-        userId: user.id,
+      const tokens = await this.generateTokens({
+        sub: user.id, // Use 'sub' claim (JOSE standard)
         email: user.email,
         role: user.role,
       });
@@ -68,9 +68,16 @@ export class AuthService implements IAuthService {
       // Use JwtService for RSA-based verification
       const decoded = await this.jwtService.verifyToken(dto.token);
 
+      if (!decoded.sub) {
+        throw new UnauthorizedException('Token payload must contain sub claim');
+      }
+
+      // Get userId from sub claim (JOSE standard)
+      const userId = decoded.sub;
+
       // Verify user still exists and is active
       const user = await prisma.user.findUnique({
-        where: { id: decoded.sub },
+        where: { id: userId },
         select: { id: true, isActive: true },
       });
 
@@ -93,9 +100,16 @@ export class AuthService implements IAuthService {
       // Verify refresh token with JwtService
       const decoded = await this.jwtService.verifyToken(dto.refreshToken);
 
+      if (!decoded.sub) {
+        throw new UnauthorizedException('Token payload must contain sub claim');
+      }
+
+      // Get userId from sub claim (JOSE standard)
+      const userId = decoded.sub;
+
       // Verify user still exists and is active
       const user = await prisma.user.findUnique({
-        where: { id: decoded.sub },
+        where: { id: userId },
         select: {
           id: true,
           email: true,
@@ -110,7 +124,7 @@ export class AuthService implements IAuthService {
 
       // Generate new tokens
       return await this.generateTokens({
-        userId: user.id,
+        sub: user.id, // Use 'sub' claim (JOSE standard)
         email: user.email,
         role: user.role,
       });

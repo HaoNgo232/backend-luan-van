@@ -78,7 +78,7 @@ export class JwtService implements OnModuleInit {
    *
    * Only user-app should call this method (requires private key).
    *
-   * @param payload Token payload (userId, email, role)
+   * @param payload Token payload
    * @param expiresInSeconds Expiration time in seconds
    * @returns Signed JWT token string
    * @throws Error if private key is not loaded
@@ -91,9 +91,13 @@ export class JwtService implements OnModuleInit {
    */
   async signToken(payload: jose.JWTPayload, expiresInSeconds: number): Promise<string> {
     if (!this.privateKey) {
-      throw new Error(
+      throw new UnauthorizedException(
         '[JwtService] Cannot sign token: Private key not loaded (set JWT_PRIVATE_KEY_BASE64)',
       );
+    }
+
+    if (!payload.sub) {
+      throw new UnauthorizedException('Token payload must contain sub claim');
     }
 
     try {
@@ -102,13 +106,13 @@ export class JwtService implements OnModuleInit {
         .setIssuedAt()
         .setIssuer(this.issuer)
         .setExpirationTime(`${expiresInSeconds}s`)
-        .setSubject(payload.sub ?? '')
+        .setSubject(payload.sub)
         .sign(this.privateKey);
 
       return token;
     } catch (error) {
       console.error('[JwtService] Error signing token:', error);
-      throw new Error(
+      throw new UnauthorizedException(
         `Failed to sign JWT token: ${error instanceof Error ? error.message : 'Unknown error'}`,
       );
     }
@@ -134,7 +138,7 @@ export class JwtService implements OnModuleInit {
    */
   async verifyToken(token: string): Promise<jose.JWTPayload> {
     if (!this.publicKey) {
-      throw new Error('[JwtService] Cannot verify token: Public key not loaded');
+      throw new UnauthorizedException('[JwtService] Cannot verify token: Public key not loaded');
     }
 
     try {

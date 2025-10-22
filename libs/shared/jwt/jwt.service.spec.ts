@@ -77,7 +77,7 @@ describe('JwtService', () => {
 
   describe('Token Signing', () => {
     const testPayload = {
-      userId: 'test-user-123',
+      sub: 'test-user-123',
       email: 'test@example.com',
       role: 'CUSTOMER',
     };
@@ -107,7 +107,7 @@ describe('JwtService', () => {
       const token = await service.signToken(testPayload, 900);
       const decoded = jose.decodeJwt(token);
 
-      expect(decoded.sub).toBe(testPayload.userId); // subject = userId
+      expect(decoded.sub).toBe(testPayload.sub); // subject = userId
       expect(decoded.iss).toBe('luan-van-ecommerce'); // issuer
       expect(decoded.iat).toBeDefined(); // issued at
       expect(decoded.exp).toBeDefined(); // expiration
@@ -117,7 +117,7 @@ describe('JwtService', () => {
       const token = await service.signToken(testPayload, 900);
       const decoded = jose.decodeJwt(token);
 
-      expect(decoded.userId).toBe(testPayload.userId);
+      expect(decoded.sub).toBe(testPayload.sub);
       expect(decoded.email).toBe(testPayload.email);
       expect(decoded.role).toBe(testPayload.role);
     });
@@ -129,7 +129,8 @@ describe('JwtService', () => {
       const testService = new JwtService();
       await testService.onModuleInit();
 
-      await expect(testService.signToken(testPayload, 900)).rejects.toThrow(
+      const payload = { sub: 'test-123', email: 'test@example.com', role: 'USER' };
+      await expect(testService.signToken(payload, 900)).rejects.toThrow(
         'Cannot sign token: Private key not loaded',
       );
 
@@ -139,7 +140,7 @@ describe('JwtService', () => {
 
   describe('Token Verification', () => {
     const testPayload = {
-      userId: 'test-user-456',
+      sub: 'test-user-456',
       email: 'verify@example.com',
       role: 'ADMIN',
     };
@@ -149,7 +150,7 @@ describe('JwtService', () => {
       const verified = await service.verifyToken(token);
 
       expect(verified).toBeDefined();
-      expect(verified.userId).toBe(testPayload.userId);
+      expect(verified.sub).toBe(testPayload.sub);
       expect(verified.email).toBe(testPayload.email);
       expect(verified.role).toBe(testPayload.role);
     });
@@ -166,8 +167,10 @@ describe('JwtService', () => {
     it('should throw UnauthorizedException for invalid signature', async () => {
       const token = await service.signToken(testPayload, 900);
 
-      // Tamper with the token (change last character)
-      const tamperedToken = token.slice(0, -1) + 'X';
+      // Tamper with the token signature (change multiple characters in signature part)
+      const parts = token.split('.');
+      const tamperedSignature = parts[2].slice(0, -10) + 'XXXXXXXXXX';
+      const tamperedToken = `${parts[0]}.${parts[1]}.${tamperedSignature}`;
 
       await expect(service.verifyToken(tamperedToken)).rejects.toThrow(UnauthorizedException);
     });
@@ -185,7 +188,7 @@ describe('JwtService', () => {
         .setIssuedAt()
         .setIssuer('wrong-issuer') // Different issuer
         .setExpirationTime('15m')
-        .setSubject(testPayload.userId)
+        .setSubject(testPayload.sub)
         .sign(privateKey);
 
       await expect(service.verifyToken(wrongIssuerToken)).rejects.toThrow(UnauthorizedException);
@@ -199,10 +202,10 @@ describe('JwtService', () => {
       expect(verified.iat).toBeDefined();
       expect(verified.exp).toBeDefined();
       expect(verified.iss).toBe('luan-van-ecommerce');
-      expect(verified.sub).toBe(testPayload.userId);
+      expect(verified.sub).toBe(testPayload.sub);
 
       // Custom payload
-      expect(verified.userId).toBeDefined();
+      expect(verified.sub).toBeDefined();
       expect(verified.email).toBeDefined();
       expect(verified.role).toBeDefined();
     });
@@ -210,7 +213,7 @@ describe('JwtService', () => {
 
   describe('Token Decoding (without verification)', () => {
     const testPayload = {
-      userId: 'decode-test-789',
+      sub: 'decode-test-789',
       email: 'decode@example.com',
       role: 'CUSTOMER',
     };
@@ -222,7 +225,7 @@ describe('JwtService', () => {
       expect(payload).toBeDefined();
       expect(header).toBeDefined();
 
-      expect(payload.userId).toBe(testPayload.userId);
+      expect(payload.sub).toBe(testPayload.sub);
       expect(payload.email).toBe(testPayload.email);
       expect(header.alg).toBe('RS256');
     });
@@ -232,7 +235,7 @@ describe('JwtService', () => {
 
       // Decode should work even for expired tokens
       const { payload } = service.decodeToken(token);
-      expect(payload.userId).toBe(testPayload.userId);
+      expect(payload.sub).toBe(testPayload.sub);
     });
 
     it('should throw error for malformed token', () => {
@@ -276,7 +279,7 @@ describe('JwtService', () => {
   describe('Integration: Sign and Verify Flow', () => {
     it('should successfully complete full JWT lifecycle', async () => {
       const payload = {
-        userId: 'lifecycle-user-001',
+        sub: 'lifecycle-user-001',
         email: 'lifecycle@example.com',
         role: 'CUSTOMER',
       };
@@ -287,19 +290,19 @@ describe('JwtService', () => {
 
       // 2. Verify token
       const verified = await service.verifyToken(token);
-      expect(verified.userId).toBe(payload.userId);
+      expect(verified.sub).toBe(payload.sub);
       expect(verified.email).toBe(payload.email);
       expect(verified.role).toBe(payload.role);
 
       // 3. Decode token (debug)
       const { payload: decoded, header } = service.decodeToken(token);
-      expect(decoded.userId).toBe(payload.userId);
+      expect(decoded.sub).toBe(payload.sub);
       expect(header.alg).toBe('RS256');
     });
 
     it('should handle multiple concurrent token operations', async () => {
       const payloads = Array.from({ length: 10 }, (_, i) => ({
-        userId: `concurrent-user-${i}`,
+        sub: `concurrent-user-${i}`,
         email: `user${i}@example.com`,
         role: 'CUSTOMER',
       }));
@@ -315,7 +318,7 @@ describe('JwtService', () => {
 
       expect(verifiedPayloads).toHaveLength(10);
       verifiedPayloads.forEach((verified, index) => {
-        expect(verified.userId).toBe(payloads[index].userId);
+        expect(verified.sub).toBe(payloads[index].sub);
         expect(verified.email).toBe(payloads[index].email);
       });
     });

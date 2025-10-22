@@ -1,9 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { AuthService } from './auth.service';
+import { JwtService } from '@shared/main'; // Import JwtService
 import { LoginDto } from '@shared/dto/auth.dto';
 import * as bcrypt from 'bcryptjs';
-import * as jwt from 'jsonwebtoken';
 
 // Mock Prisma
 jest.mock('@user-app/prisma/prisma.client', () => ({
@@ -17,23 +17,34 @@ jest.mock('@user-app/prisma/prisma.client', () => ({
 // Mock bcrypt
 jest.mock('bcryptjs');
 
-// Mock jsonwebtoken
-jest.mock('jsonwebtoken');
-
 import { prisma } from '@user-app/prisma/prisma.client';
 
 describe('AuthService', () => {
   let service: AuthService;
+  let jwtService: JwtService;
+
+  // Mock JwtService
+  const mockJwtService = {
+    signToken: jest.fn(),
+    verifyToken: jest.fn(),
+    decodeToken: jest.fn(),
+  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [AuthService],
+      providers: [
+        AuthService,
+        {
+          provide: JwtService,
+          useValue: mockJwtService,
+        },
+      ],
     }).compile();
 
     service = module.get<AuthService>(AuthService);
+    jwtService = module.get<JwtService>(JwtService);
 
     // Set test environment variables
-    process.env.JWT_SECRET_KEY = 'test_secret';
     process.env.JWT_EXPIRES_IN = '15m';
     process.env.JWT_REFRESH_EXPIRES_IN = '7d';
 
@@ -45,7 +56,7 @@ describe('AuthService', () => {
   });
 
   describe('login', () => {
-    it('should return tokens and user data on successful login', async () => {
+    it('should return tokens on successful login', async () => {
       const loginDto: LoginDto = {
         email: 'test@example.com',
         password: 'password123',
@@ -62,22 +73,14 @@ describe('AuthService', () => {
 
       (prisma.user.findUnique as jest.Mock).mockResolvedValue(mockUser);
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
-      (jwt.sign as jest.Mock).mockReturnValue('mock_token');
+      mockJwtService.signToken.mockResolvedValue('mock_token');
 
       const result = await service.login(loginDto);
 
       expect(result).toHaveProperty('accessToken');
       expect(result).toHaveProperty('refreshToken');
-      expect(result.user).toEqual({
-        id: mockUser.id,
-        email: mockUser.email,
-        fullName: mockUser.fullName,
-        role: mockUser.role,
-      });
-      expect(bcrypt.compare).toHaveBeenCalledWith(
-        loginDto.password,
-        mockUser.passwordHash,
-      );
+      expect(bcrypt.compare).toHaveBeenCalledWith(loginDto.password, mockUser.passwordHash);
+      expect(mockJwtService.signToken).toHaveBeenCalledTimes(2); // access + refresh token
     });
 
     it('should throw UnauthorizedException when user not found', async () => {
@@ -88,9 +91,7 @@ describe('AuthService', () => {
 
       (prisma.user.findUnique as jest.Mock).mockResolvedValue(null);
 
-      await expect(service.login(loginDto)).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(service.login(loginDto)).rejects.toThrow(UnauthorizedException);
     });
 
     it('should throw UnauthorizedException when password is invalid', async () => {
@@ -109,9 +110,7 @@ describe('AuthService', () => {
       (prisma.user.findUnique as jest.Mock).mockResolvedValue(mockUser);
       (bcrypt.compare as jest.Mock).mockResolvedValue(false);
 
-      await expect(service.login(loginDto)).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(service.login(loginDto)).rejects.toThrow(UnauthorizedException);
     });
 
     it('should throw UnauthorizedException when user is inactive', async () => {
@@ -129,16 +128,14 @@ describe('AuthService', () => {
 
       (prisma.user.findUnique as jest.Mock).mockResolvedValue(mockUser);
 
-      await expect(service.login(loginDto)).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(service.login(loginDto)).rejects.toThrow(UnauthorizedException);
     });
   });
 
   describe('verify', () => {
     it('should return decoded token when valid', async () => {
       const mockPayload = {
-        userId: '1',
+        sub: '1', // Use 'sub' instead of 'userId'
         email: 'test@example.com',
         role: 'CUSTOMER',
       };
@@ -148,19 +145,17 @@ describe('AuthService', () => {
         isActive: true,
       };
 
-      (jwt.verify as jest.Mock).mockReturnValue(mockPayload);
+      mockJwtService.verifyToken.mockResolvedValue(mockPayload);
       (prisma.user.findUnique as jest.Mock).mockResolvedValue(mockUser);
 
       const result = await service.verify({ token: 'valid_token' });
 
       expect(result).toEqual(mockPayload);
-      expect(jwt.verify).toHaveBeenCalledWith('valid_token', 'test_secret');
+      expect(mockJwtService.verifyToken).toHaveBeenCalledWith('valid_token');
     });
 
     it('should throw UnauthorizedException when token is invalid', async () => {
-      (jwt.verify as jest.Mock).mockImplementation(() => {
-        throw new jwt.JsonWebTokenError('invalid token');
-      });
+      mockJwtService.verifyToken.mockRejectedValue(new UnauthorizedException('Invalid token'));
 
       await expect(service.verify({ token: 'invalid_token' })).rejects.toThrow(
         UnauthorizedException,
@@ -168,9 +163,7 @@ describe('AuthService', () => {
     });
 
     it('should throw UnauthorizedException when token is expired', async () => {
-      (jwt.verify as jest.Mock).mockImplementation(() => {
-        throw new jwt.TokenExpiredError('token expired', new Date());
-      });
+      mockJwtService.verifyToken.mockRejectedValue(new UnauthorizedException('Token has expired'));
 
       await expect(service.verify({ token: 'expired_token' })).rejects.toThrow(
         UnauthorizedException,
@@ -179,7 +172,7 @@ describe('AuthService', () => {
 
     it('should throw UnauthorizedException when user is inactive', async () => {
       const mockPayload = {
-        userId: '1',
+        sub: '1', // Use 'sub' instead of 'userId'
         email: 'test@example.com',
         role: 'CUSTOMER',
       };
@@ -189,19 +182,17 @@ describe('AuthService', () => {
         isActive: false,
       };
 
-      (jwt.verify as jest.Mock).mockReturnValue(mockPayload);
+      mockJwtService.verifyToken.mockResolvedValue(mockPayload);
       (prisma.user.findUnique as jest.Mock).mockResolvedValue(mockUser);
 
-      await expect(service.verify({ token: 'valid_token' })).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(service.verify({ token: 'valid_token' })).rejects.toThrow(UnauthorizedException);
     });
   });
 
   describe('refresh', () => {
     it('should return new tokens when refresh token is valid', async () => {
       const mockPayload = {
-        userId: '1',
+        sub: '1', // Use 'sub' instead of 'userId'
         email: 'test@example.com',
         role: 'CUSTOMER',
       };
@@ -213,9 +204,9 @@ describe('AuthService', () => {
         isActive: true,
       };
 
-      (jwt.verify as jest.Mock).mockReturnValue(mockPayload);
+      mockJwtService.verifyToken.mockResolvedValue(mockPayload);
       (prisma.user.findUnique as jest.Mock).mockResolvedValue(mockUser);
-      (jwt.sign as jest.Mock).mockReturnValue('new_token');
+      mockJwtService.signToken.mockResolvedValue('new_token');
 
       const result = await service.refresh({ refreshToken: 'valid_refresh' });
 
@@ -224,13 +215,11 @@ describe('AuthService', () => {
     });
 
     it('should throw UnauthorizedException when refresh token is invalid', async () => {
-      (jwt.verify as jest.Mock).mockImplementation(() => {
-        throw new jwt.JsonWebTokenError('invalid token');
-      });
+      mockJwtService.verifyToken.mockRejectedValue(new UnauthorizedException('Invalid token'));
 
-      await expect(
-        service.refresh({ refreshToken: 'invalid_refresh' }),
-      ).rejects.toThrow(UnauthorizedException);
+      await expect(service.refresh({ refreshToken: 'invalid_refresh' })).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
   });
 });
