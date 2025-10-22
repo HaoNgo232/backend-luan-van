@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/explicit-function-return-type */
 import { Controller, Get } from '@nestjs/common';
 import {
   HealthCheckService,
@@ -11,8 +10,8 @@ import { Transport } from '@nestjs/microservices';
 @Controller('health')
 export class HealthController {
   constructor(
-    private health: HealthCheckService,
-    private microservice: MicroserviceHealthIndicator,
+    private readonly health: HealthCheckService,
+    private readonly microservice: MicroserviceHealthIndicator,
   ) {}
 
   @Get()

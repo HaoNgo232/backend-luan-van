@@ -1,6 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import * as jwt from 'jsonwebtoken';
-
+import * as jose from 'jose';
 /**
  * Test Helper - Create Testing Module
  * Helper đơn giản để tạo NestJS testing module
@@ -29,21 +28,24 @@ export const createTestingModule = async (
 /**
  * Generate test JWT token
  */
-export const generateTestToken = (payload: {
+export const generateTestToken = async (payload: {
   userId: string;
   email: string;
   role?: string;
-}): string => {
+}): Promise<string> => {
   const secret = process.env.JWT_SECRET_KEY || 'test_secret';
-  return jwt.sign(
-    {
-      userId: payload.userId,
-      email: payload.email,
-      role: payload.role || 'CUSTOMER',
-    },
-    secret,
-    { expiresIn: '1h' },
-  );
+
+  const privateKey = await jose.importPKCS8(secret, 'HS256');
+
+  const testToken = await new jose.SignJWT(payload)
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuedAt()
+    .setIssuer('test')
+    .setExpirationTime('1h')
+    .setSubject(payload.userId)
+    .sign(privateKey);
+
+  return testToken;
 };
 
 /**
@@ -64,19 +66,30 @@ export const createMockUser = (overrides = {}) => ({
 /**
  * Create mock request with authentication
  */
-export const createMockAuthRequest = (userId = '1', role = 'CUSTOMER') => ({
-  headers: {
-    authorization: `Bearer ${generateTestToken({ userId, email: 'test@example.com', role })}`,
-  },
-  user: {
-    userId,
-    email: 'test@example.com',
-    role,
-  },
-});
+export const createMockAuthRequest = async (
+  userId = '1',
+  role = 'CUSTOMER',
+): Promise<{
+  headers: { authorization: string };
+  user: { userId: string; email: string; role: string };
+}> => {
+  const payload = { userId, email: 'test@example.com', role };
+  const token = await generateTestToken(payload);
+
+  return {
+    headers: {
+      authorization: `Bearer ${token}`,
+    },
+    user: {
+      userId,
+      email: 'test@example.com',
+      role,
+    },
+  };
+};
 
 /**
  * Wait for async operations (useful in tests)
  */
 export const waitFor = (ms: number): Promise<void> =>
-  new Promise((resolve) => setTimeout(resolve, ms));
+  new Promise(resolve => setTimeout(resolve, ms));

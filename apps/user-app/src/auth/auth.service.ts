@@ -21,7 +21,7 @@ export class AuthService implements IAuthService {
     this.jwtRefreshExpiresIn = process.env.JWT_REFRESH_EXPIRES_IN || '7d';
   }
 
-  async login(dto: LoginDto): Promise<AuthTokens> {
+  async login(dto: LoginDto): Promise<AuthTokens & { user: object }> {
     try {
       // Find user by email
       const user = await prisma.user.findUnique({
@@ -53,6 +53,11 @@ export class AuthService implements IAuthService {
 
       return {
         ...tokens,
+        user: {
+          sub: user.id,
+          email: user.email,
+          role: user.role,
+        },
       };
     } catch (error) {
       if (error instanceof UnauthorizedException) {

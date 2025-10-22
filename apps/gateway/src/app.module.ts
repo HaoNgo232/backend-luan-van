@@ -2,14 +2,6 @@ import { Module } from '@nestjs/common';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { TerminusModule } from '@nestjs/terminus';
 import { HealthController } from '@gateway/health.controller';
-import { AuthModule } from './auth/auth.module';
-import { UsersModule } from './users/users.module';
-import { AddressesModule } from './addresses/addresses.module';
-import { ProductsModule } from './products/products.module';
-import { CartModule } from './cart/cart.module';
-import { OrdersModule } from './orders/orders.module';
-import { PaymentsModule } from './payments/payments.module';
-import { ArModule } from './ar/ar.module';
 
 @Module({
   imports: [
@@ -72,15 +64,6 @@ import { ArModule } from './ar/ar.module';
         },
       },
     ]),
-    // Feature modules
-    AuthModule,
-    UsersModule,
-    AddressesModule,
-    ProductsModule,
-    CartModule,
-    OrdersModule,
-    PaymentsModule,
-    ArModule,
   ],
   controllers: [HealthController],
   providers: [],

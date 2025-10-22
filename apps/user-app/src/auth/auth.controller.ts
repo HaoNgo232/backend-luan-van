@@ -3,11 +3,12 @@ import { MessagePattern, Payload } from '@nestjs/microservices';
 import { AuthService } from '@user-app/auth/auth.service';
 import { EVENTS } from '@shared/events';
 import { LoginDto, VerifyDto, RefreshDto } from '@shared/dto/auth.dto';
-import { AuthTokens, JwtPayload } from '@shared/main';
+import { AuthTokens } from '@shared/main';
+import { JWTPayload } from 'jose';
 
 export interface IAuthController {
   login(dto: LoginDto): Promise<AuthTokens & { user: object }>;
-  verify(dto: VerifyDto): Promise<JwtPayload>;
+  verify(dto: VerifyDto): Promise<JWTPayload>;
   refresh(dto: RefreshDto): Promise<AuthTokens>;
 }
 
@@ -21,7 +22,7 @@ export class AuthController implements IAuthController {
   }
 
   @MessagePattern(EVENTS.AUTH.VERIFY)
-  verify(@Payload() dto: VerifyDto): Promise<JwtPayload> {
+  verify(@Payload() dto: VerifyDto): Promise<JWTPayload> {
     return this.authService.verify(dto);
   }
 
