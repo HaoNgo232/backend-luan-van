@@ -115,7 +115,7 @@ export class ProductListQueryDto {
 
   @IsOptional()
   @IsString()
-  q?: string;
+  search?: string;
 
   @IsOptional()
   @IsString()

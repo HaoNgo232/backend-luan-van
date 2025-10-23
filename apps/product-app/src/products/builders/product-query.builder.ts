@@ -14,11 +14,11 @@ export class ProductQueryBuilder {
     const where: Record<string, unknown> = {};
 
     // Search filter
-    if (query.q) {
+    if (query.search) {
       where.OR = [
-        { name: { contains: query.q, mode: 'insensitive' } },
-        { description: { contains: query.q, mode: 'insensitive' } },
-        { sku: { contains: query.q, mode: 'insensitive' } },
+        { name: { contains: query.search, mode: 'insensitive' } },
+        { description: { contains: query.search, mode: 'insensitive' } },
+        { sku: { contains: query.search, mode: 'insensitive' } },
       ];
     }
 
