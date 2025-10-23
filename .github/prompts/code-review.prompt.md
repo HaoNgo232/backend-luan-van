@@ -1,65 +1,81 @@
-# Code Review - SOLID & Clean Code Checker
+# Local Code Review Assistant
 
-Review the current code changes and check against these criteria:
+You are helping me perform a local code review **before** I push changes. Please follow this structured workflow.
 
-## Type Safety
+## Step 1: Gather Context
+Ask me for:
+- Brief feature/branch description
+- List of modified files (with optional summaries)
+- Relevant design doc(s) (e.g., `docs/ai/design/feature-{name}.md` or project-level design)
+- Any known constraints or risky areas
+- Any open bugs or TODOs linked to this work
+- Which tests have already been run
 
-- [ ] All async functions have explicit return types (except controllers)
-- [ ] No usage of `any` type without strong justification
-- [ ] DTOs have proper class-validator decorators
+If possible, request the latest diff:
+```bash
+git status -sb
+git diff --stat
+```
 
-## SOLID Principles
+## Step 2: Understand Design Alignment
+For each provided design doc:
+- Summarize the architectural intent
+- Note critical requirements, patterns, or constraints the design mandates
 
-- [ ] **Single Responsibility**: Each class has one clear purpose
-- [ ] **Open/Closed**: Extensible without modification
-- [ ] **Liskov Substitution**: Subclasses honor base contracts
-- [ ] **Interface Segregation**: No fat interfaces
-- [ ] **Dependency Inversion**: Depend on abstractions
+## Step 3: File-by-File Review
+For every modified file:
+1. Highlight deviations from the referenced design or requirements
+2. Spot potential logic or flow issues and edge cases
+3. Identify redundant or duplicate code
+4. Suggest simplifications or refactors (prefer clarity over cleverness)
+5. Flag security concerns (input validation, secrets, auth, data handling)
+6. Check for performance pitfalls or scalability risks
+7. Ensure error handling, logging, and observability are appropriate
+8. Note any missing comments or docs
+9. Flag missing or outdated tests related to this file
 
-## Error Handling
+## Step 4: Cross-Cutting Concerns
+- Verify naming consistency and adherence to project conventions
+- Confirm documentation/comments are updated where the behavior changed
+- Identify missing tests (unit, integration, E2E) needed to cover the changes
+- Ensure configuration/migration updates are captured if applicable
 
-- [ ] All async operations wrapped in try-catch
-- [ ] Errors logged with context
-- [ ] Meaningful error messages for users
-- [ ] Proper NestJS exceptions used
+## Step 5: Summarize Findings
+Provide results in this structure:
+```
+### Summary
+- Blocking issues: [count]
+- Important follow-ups: [count]
+- Nice-to-have improvements: [count]
 
-## Testing
+### Detailed Notes
+1. **[File or Component]**
+   - Issue/Observation: ...
+   - Impact: (e.g., blocking / important / nice-to-have)
+   - Recommendation: ...
+   - Design reference: [...]
 
-- [ ] Unit tests present for new/modified services
-- [ ] Edge cases covered
-- [ ] Mock external dependencies
-- [ ] Test coverage ≥70% for core services
+2. ... (repeat per finding)
 
-## Code Quality
+### Recommended Next Steps
+- [ ] Address blocking issues
+- [ ] Update design/implementation docs if needed
+- [ ] Add/adjust tests:
+      - Unit:
+      - Integration:
+      - E2E:
+- [ ] Rerun local test suite
+- [ ] Re-run code review command after fixes
+```
 
-- [ ] Meaningful variable/function names
-- [ ] No code duplication
-- [ ] Functions are focused and short
-- [ ] Comments explain WHY, not WHAT
+## Step 6: Final Checklist
+Confirm whether each item is complete (yes/no/needs follow-up):
+- Implementation matches design & requirements
+- No obvious logic or edge-case gaps remain
+- Redundant code removed or justified
+- Security considerations addressed
+- Tests cover new/changed behavior
+- Documentation/design notes updated
 
-## Prisma Best Practices
-
-- [ ] Explicit select (don't expose sensitive fields)
-- [ ] Proper error handling for unique constraints
-- [ ] Transactions for multi-step operations
-
-## Review Output
-
-Provide feedback in this format:
-
-### What's Good
-
-[List positive aspects]
-
-### 🔧 Needs Improvement
-
-[List issues with code examples]
-
-### 🎯 Action Items
-
-1. [Specific change needed]
-2. [Another improvement]
-
-### 💡 Learning Point
-
-[Explain why these changes matter for code quality and thesis defense]
+---
+Let me know when you're ready to begin the review.
