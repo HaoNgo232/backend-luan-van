@@ -49,6 +49,8 @@ describe('UsersService', () => {
         phone: '1234567890',
         role: 'CUSTOMER',
         isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       };
 
       (prisma.user.findUnique as jest.Mock).mockResolvedValue(mockUser);
@@ -65,6 +67,8 @@ describe('UsersService', () => {
           phone: true,
           role: true,
           isActive: true,
+          createdAt: true,
+          updatedAt: true,
         },
       });
     });
@@ -155,6 +159,8 @@ describe('UsersService', () => {
           phone: true,
           role: true,
           isActive: true,
+          createdAt: true,
+          updatedAt: true,
         },
       });
     });
@@ -205,6 +211,7 @@ describe('UsersService', () => {
           role: 'CUSTOMER',
           isActive: true,
           createdAt: new Date(),
+          updatedAt: new Date(),
         },
       ];
 

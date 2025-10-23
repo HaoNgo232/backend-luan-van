@@ -1,7 +1,6 @@
 import { Injectable, CanActivate, ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@shared/main';
 import { Request } from 'express';
-import * as jose from 'jose';
 /**
  * Authentication Guard for Gateway
  * Validates JWT token locally using RSA public key (no microservice call needed!)
@@ -37,7 +36,7 @@ export class AuthGuard implements CanActivate {
 
       // Attach user info to request
       request['user'] = {
-        userId: payload.sub as string,
+        userId: payload.sub,
         email: payload.email,
         role: payload.role,
       };
