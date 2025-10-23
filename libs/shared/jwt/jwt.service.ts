@@ -1,7 +1,7 @@
 import { Injectable, UnauthorizedException, OnModuleInit } from '@nestjs/common';
 import * as jose from 'jose';
-import * as fs from 'fs/promises';
-import * as path from 'path';
+import * as path from 'node:path';
+import { FileReaderService } from '../utils/file-reader.service';
 
 /**
  * JWT Service - RSA-based Token Signing and Verification
@@ -10,7 +10,7 @@ import * as path from 'path';
  * - User-app: Has private key for signing tokens
  * - Other services: Have public key for verifying tokens
  *
- * Keys are loaded from environment variables (base64-encoded PEM format).
+ * Keys are loaded from PEM files in the keys/ directory.
  *
  * @example
  * // User-app signs tokens
@@ -27,6 +27,8 @@ export class JwtService implements OnModuleInit {
 
   private readonly algorithm = 'RS256';
   private readonly issuer = 'luan-van-ecommerce';
+
+  constructor(private readonly fileReader: FileReaderService) {}
 
   /**
    * Initialize service and load RSA keys from environment variables
@@ -51,18 +53,20 @@ export class JwtService implements OnModuleInit {
 
       // Load public key (required for all services)
       const publicKeyPath = path.join(keysDir, 'public-key.pem');
-      const publicKeyPEM = await fs.readFile(publicKeyPath, 'utf-8');
+      const publicKeyPEM = await this.fileReader.readFile(publicKeyPath);
       this.publicKey = await jose.importSPKI(publicKeyPEM, this.algorithm);
 
       console.log('[JwtService] ✅ Public key loaded successfully from file');
 
       // Load private key (optional - only for user-app)
       const privateKeyPath = path.join(keysDir, 'private-key.pem');
-      try {
-        const privateKeyPEM = await fs.readFile(privateKeyPath, 'utf-8');
+      const privateKeyExists = await this.fileReader.fileExists(privateKeyPath);
+
+      if (privateKeyExists) {
+        const privateKeyPEM = await this.fileReader.readFile(privateKeyPath);
         this.privateKey = await jose.importPKCS8(privateKeyPEM, this.algorithm);
         console.log('[JwtService] ✅ Private key loaded successfully (signing enabled)');
-      } catch {
+      } else {
         // Private key is optional - service can still verify tokens without it
         console.log('[JwtService] ℹ️  Private key not found (verification-only mode)');
       }

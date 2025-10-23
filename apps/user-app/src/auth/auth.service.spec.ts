@@ -3,8 +3,11 @@ import { UnauthorizedException } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { JwtService } from '@shared/main';
 import { LoginDto } from '@shared/dto/auth.dto';
-import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '@user-app/prisma/prisma.service';
+
+// Mock bcrypt module
+jest.mock('bcryptjs');
+import * as bcrypt from 'bcryptjs';
 
 const mockPrismaService = {
   user: {

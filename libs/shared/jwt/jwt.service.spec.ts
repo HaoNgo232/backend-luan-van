@@ -1,12 +1,23 @@
+/* eslint-disable @typescript-eslint/require-await */
 import { Test, TestingModule } from '@nestjs/testing';
 import { UnauthorizedException } from '@nestjs/common';
-import { JwtService } from './jwt.service';
 import * as jose from 'jose';
+
+jest.mock('bcryptjs', () => ({
+  compare: jest.fn(),
+  hash: jest.fn(),
+}));
+
+// Import services
+import { JwtService } from './jwt.service';
+import { FileReaderService } from '../utils/file-reader.service';
 
 describe('JwtService', () => {
   let service: JwtService;
   let publicKey: jose.KeyLike;
   let privateKey: jose.KeyLike;
+  let publicKeyPEM: string;
+  let privateKeyPEM: string;
 
   beforeAll(async () => {
     // Generate test RSA keys
@@ -17,17 +28,38 @@ describe('JwtService', () => {
     privateKey = keyPair.privateKey;
 
     // Export to PEM format
-    const publicKeyPEM = await jose.exportSPKI(publicKey);
-    const privateKeyPEM = await jose.exportPKCS8(privateKey);
-
-    // Base64 encode for environment variables
-    process.env.JWT_PUBLIC_KEY_BASE64 = Buffer.from(publicKeyPEM).toString('base64');
-    process.env.JWT_PRIVATE_KEY_BASE64 = Buffer.from(privateKeyPEM).toString('base64');
+    publicKeyPEM = await jose.exportSPKI(publicKey);
+    privateKeyPEM = await jose.exportPKCS8(privateKey);
   });
 
   beforeEach(async () => {
+    // Mock FileReaderService
+    const mockFileReaderService = {
+      readFile: jest.fn((path: string) => {
+        if (path.includes('public-key.pem')) {
+          return Promise.resolve(publicKeyPEM);
+        }
+        if (path.includes('private-key.pem')) {
+          return Promise.resolve(privateKeyPEM);
+        }
+        return Promise.reject(new Error('File not found'));
+      }),
+      fileExists: jest.fn((path: string) => {
+        if (path.includes('private-key.pem')) {
+          return Promise.resolve(true);
+        }
+        return Promise.resolve(false);
+      }),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
-      providers: [JwtService],
+      providers: [
+        JwtService,
+        {
+          provide: FileReaderService,
+          useValue: mockFileReaderService,
+        },
+      ],
     }).compile();
 
     service = module.get<JwtService>(JwtService);
@@ -35,9 +67,8 @@ describe('JwtService', () => {
   });
 
   afterAll(() => {
-    // Clean up environment variables
-    delete process.env.JWT_PUBLIC_KEY_BASE64;
-    delete process.env.JWT_PRIVATE_KEY_BASE64;
+    // Clean up mocks
+    jest.restoreAllMocks();
   });
 
   describe('Module Initialization', () => {
@@ -51,27 +82,39 @@ describe('JwtService', () => {
     });
 
     it('should throw error if public key is missing', async () => {
-      const publicKeyBackup = process.env.JWT_PUBLIC_KEY_BASE64;
-      delete process.env.JWT_PUBLIC_KEY_BASE64;
+      // Mock: public key file not found
+      const mockFileReader = {
+        readFile: jest.fn().mockRejectedValue(new Error('ENOENT: no such file or directory')),
+        fileExists: jest.fn().mockResolvedValue(false),
+      };
 
-      const testService = new JwtService();
+      const testService = new JwtService(mockFileReader as unknown as FileReaderService);
 
       await expect(testService.onModuleInit()).rejects.toThrow('JWT key initialization failed');
-
-      process.env.JWT_PUBLIC_KEY_BASE64 = publicKeyBackup;
     });
 
     it('should work without private key (verification-only mode)', async () => {
-      const privateKeyBackup = process.env.JWT_PRIVATE_KEY_BASE64;
-      delete process.env.JWT_PRIVATE_KEY_BASE64;
+      // Mock: only public key available, private key missing
+      const mockFileReader = {
+        readFile: jest.fn((path: string) => {
+          if (path.includes('public-key.pem')) {
+            return Promise.resolve(publicKeyPEM);
+          }
+          return Promise.reject(new Error('ENOENT: no such file or directory'));
+        }),
+        fileExists: jest.fn((path: string) => {
+          if (path.includes('private-key.pem')) {
+            return Promise.resolve(false);
+          }
+          return Promise.resolve(false);
+        }),
+      };
 
-      const testService = new JwtService();
+      const testService = new JwtService(mockFileReader as unknown as FileReaderService);
       await testService.onModuleInit();
 
       expect(testService.canVerifyTokens()).toBe(true);
       expect(testService.canSignTokens()).toBe(false);
-
-      process.env.JWT_PRIVATE_KEY_BASE64 = privateKeyBackup;
     });
   });
 
@@ -123,18 +166,29 @@ describe('JwtService', () => {
     });
 
     it('should throw error if private key not loaded', async () => {
-      const privateKeyBackup = process.env.JWT_PRIVATE_KEY_BASE64;
-      delete process.env.JWT_PRIVATE_KEY_BASE64;
+      // Mock: only public key available
+      const mockFileReader = {
+        readFile: jest.fn((path: string) => {
+          if (path.includes('public-key.pem')) {
+            return Promise.resolve(publicKeyPEM);
+          }
+          return Promise.reject(new Error('ENOENT: no such file or directory'));
+        }),
+        fileExists: jest.fn((path: string) => {
+          if (path.includes('private-key.pem')) {
+            return Promise.resolve(false);
+          }
+          return Promise.resolve(false);
+        }),
+      };
 
-      const testService = new JwtService();
+      const testService = new JwtService(mockFileReader as unknown as FileReaderService);
       await testService.onModuleInit();
 
       const payload = { sub: 'test-123', email: 'test@example.com', role: 'USER' };
       await expect(testService.signToken(payload, 900)).rejects.toThrow(
         'Cannot sign token: Private key not loaded',
       );
-
-      process.env.JWT_PRIVATE_KEY_BASE64 = privateKeyBackup;
     });
   });
 
@@ -263,16 +317,27 @@ describe('JwtService', () => {
     });
 
     it('should report no signing capability without private key', async () => {
-      const privateKeyBackup = process.env.JWT_PRIVATE_KEY_BASE64;
-      delete process.env.JWT_PRIVATE_KEY_BASE64;
+      // Mock: only public key available
+      const mockFileReader = {
+        readFile: jest.fn((path: string) => {
+          if (path.includes('public-key.pem')) {
+            return Promise.resolve(publicKeyPEM);
+          }
+          return Promise.reject(new Error('ENOENT: no such file or directory'));
+        }),
+        fileExists: jest.fn((path: string) => {
+          if (path.includes('private-key.pem')) {
+            return Promise.resolve(false);
+          }
+          return Promise.resolve(false);
+        }),
+      };
 
-      const testService = new JwtService();
+      const testService = new JwtService(mockFileReader as unknown as FileReaderService);
       await testService.onModuleInit();
 
       expect(testService.canSignTokens()).toBe(false);
       expect(testService.canVerifyTokens()).toBe(true);
-
-      process.env.JWT_PRIVATE_KEY_BASE64 = privateKeyBackup;
     });
   });
 
@@ -317,10 +382,11 @@ describe('JwtService', () => {
       const verifiedPayloads = await Promise.all(tokens.map(t => service.verifyToken(t)));
 
       expect(verifiedPayloads).toHaveLength(10);
-      verifiedPayloads.forEach((verified, index) => {
+      for (let index = 0; index < verifiedPayloads.length; index++) {
+        const verified = verifiedPayloads[index];
         expect(verified.sub).toBe(payloads[index].sub);
         expect(verified.email).toBe(payloads[index].email);
-      });
+      }
     });
   });
 });

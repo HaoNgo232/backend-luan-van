@@ -1,5 +1,6 @@
 import { Module, Global } from '@nestjs/common';
 import { JwtService } from './jwt.service';
+import { FileReaderService } from '../utils/file-reader.service';
 
 /**
  * JWT Module - Global JWT Service Provider
@@ -7,6 +8,9 @@ import { JwtService } from './jwt.service';
  * Marked as @Global() to make JwtService available across all modules
  * without explicit imports. This ensures consistent JWT handling
  * throughout the microservices architecture.
+ *
+ * Dependencies:
+ * - FileReaderService: For reading RSA key files from disk
  *
  * Usage:
  * 1. Import JwtModule in your app's root module
@@ -26,7 +30,7 @@ import { JwtService } from './jwt.service';
  */
 @Global()
 @Module({
-  providers: [JwtService],
+  providers: [JwtService, FileReaderService],
   exports: [JwtService],
 })
 export class JwtModule {}

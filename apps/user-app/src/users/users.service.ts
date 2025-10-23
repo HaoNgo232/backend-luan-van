@@ -37,7 +37,8 @@ export class UsersService implements IUserService {
         throw new NotFoundException(`User with ID ${id} not found`);
       }
 
-      return user;
+      // Type assertion: Prisma enum → Shared enum
+      return user as UserResponse;
     } catch (error) {
       if (error instanceof NotFoundException) throw error;
       console.error('[UsersService] findById error:', error);
@@ -65,7 +66,8 @@ export class UsersService implements IUserService {
         throw new NotFoundException(`User with email ${email} not found`);
       }
 
-      return user;
+      // Type assertion: Prisma enum → Shared enum
+      return user as UserResponse;
     } catch (error) {
       if (error instanceof NotFoundException) throw error;
       console.error('[UsersService] findByEmail error:', error);
@@ -102,7 +104,8 @@ export class UsersService implements IUserService {
         throw new BadRequestException('Failed to create user');
       }
 
-      return user;
+      // Type assertion: Prisma enum → Shared enum
+      return user as UserResponse;
     } catch (error) {
       if (error instanceof BadRequestException) throw error;
       console.error('[UsersService] create error:', error);
@@ -134,7 +137,8 @@ export class UsersService implements IUserService {
         },
       });
 
-      return user;
+      // Type assertion: Prisma enum → Shared enum
+      return user as UserResponse;
     } catch (error) {
       if (error instanceof NotFoundException) throw error;
       console.error('[UsersService] update error:', error);
@@ -191,7 +195,8 @@ export class UsersService implements IUserService {
         this.prisma.user.count({ where }),
       ]);
 
-      return { users, total, page, pageSize };
+      // Type assertion: Prisma enum → Shared enum
+      return { users: users as UserResponse[], total, page, pageSize };
     } catch (error) {
       console.error('[UsersService] list error:', error);
       throw new BadRequestException('Failed to list users');
