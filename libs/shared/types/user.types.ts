@@ -1,4 +1,4 @@
-import { UserRole } from '@shared/dto/user.dto';
+import { UserRole } from '@user-app/prisma/generated/client';
 
 /**
  * User Response Types

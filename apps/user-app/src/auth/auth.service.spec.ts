@@ -1,34 +1,32 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { UnauthorizedException, BadRequestException } from '@nestjs/common';
+import { UnauthorizedException } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { JwtService } from '@shared/main'; // Import JwtService
+import { JwtService } from '@shared/main';
 import { LoginDto } from '@shared/dto/auth.dto';
 import * as bcrypt from 'bcryptjs';
+import { PrismaService } from '@user-app/prisma/prisma.service';
 
-// Mock Prisma
-jest.mock('@user-app/prisma/prisma.client', () => ({
-  prisma: {
-    user: {
-      findUnique: jest.fn(),
-    },
+const mockPrismaService = {
+  user: {
+    findUnique: jest.fn(),
+    findMany: jest.fn(),
+    create: jest.fn(),
+    update: jest.fn(),
+    delete: jest.fn(),
+    count: jest.fn(),
   },
-}));
+};
 
-// Mock bcrypt
-jest.mock('bcryptjs');
-
-import { prisma } from '@user-app/prisma/prisma.client';
+// Mock JwtService
+const mockJwtService = {
+  signToken: jest.fn(),
+  verifyToken: jest.fn(),
+  decodeToken: jest.fn(),
+};
 
 describe('AuthService', () => {
   let service: AuthService;
-  let jwtService: JwtService;
-
-  // Mock JwtService
-  const mockJwtService = {
-    signToken: jest.fn(),
-    verifyToken: jest.fn(),
-    decodeToken: jest.fn(),
-  };
+  let prisma: typeof mockPrismaService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -38,11 +36,15 @@ describe('AuthService', () => {
           provide: JwtService,
           useValue: mockJwtService,
         },
+        {
+          provide: PrismaService,
+          useValue: mockPrismaService,
+        },
       ],
     }).compile();
 
     service = module.get<AuthService>(AuthService);
-    jwtService = module.get<JwtService>(JwtService);
+    prisma = module.get(PrismaService);
 
     // Set test environment variables
     process.env.JWT_EXPIRES_IN = '15m';
@@ -71,7 +73,7 @@ describe('AuthService', () => {
         isActive: true,
       };
 
-      (prisma.user.findUnique as jest.Mock).mockResolvedValue(mockUser);
+      prisma.user.findUnique.mockResolvedValue(mockUser);
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
       mockJwtService.signToken.mockResolvedValue('mock_token');
 
@@ -89,7 +91,7 @@ describe('AuthService', () => {
         password: 'password123',
       };
 
-      (prisma.user.findUnique as jest.Mock).mockResolvedValue(null);
+      prisma.user.findUnique.mockResolvedValue(null);
 
       await expect(service.login(loginDto)).rejects.toThrow(UnauthorizedException);
     });
@@ -107,7 +109,7 @@ describe('AuthService', () => {
         isActive: true,
       };
 
-      (prisma.user.findUnique as jest.Mock).mockResolvedValue(mockUser);
+      prisma.user.findUnique.mockResolvedValue(mockUser);
       (bcrypt.compare as jest.Mock).mockResolvedValue(false);
 
       await expect(service.login(loginDto)).rejects.toThrow(UnauthorizedException);
@@ -126,7 +128,7 @@ describe('AuthService', () => {
         isActive: false,
       };
 
-      (prisma.user.findUnique as jest.Mock).mockResolvedValue(mockUser);
+      prisma.user.findUnique.mockResolvedValue(mockUser);
 
       await expect(service.login(loginDto)).rejects.toThrow(UnauthorizedException);
     });
@@ -146,7 +148,7 @@ describe('AuthService', () => {
       };
 
       mockJwtService.verifyToken.mockResolvedValue(mockPayload);
-      (prisma.user.findUnique as jest.Mock).mockResolvedValue(mockUser);
+      prisma.user.findUnique.mockResolvedValue(mockUser);
 
       const result = await service.verify({ token: 'valid_token' });
 
@@ -183,7 +185,7 @@ describe('AuthService', () => {
       };
 
       mockJwtService.verifyToken.mockResolvedValue(mockPayload);
-      (prisma.user.findUnique as jest.Mock).mockResolvedValue(mockUser);
+      prisma.user.findUnique.mockResolvedValue(mockUser);
 
       await expect(service.verify({ token: 'valid_token' })).rejects.toThrow(UnauthorizedException);
     });
@@ -205,7 +207,7 @@ describe('AuthService', () => {
       };
 
       mockJwtService.verifyToken.mockResolvedValue(mockPayload);
-      (prisma.user.findUnique as jest.Mock).mockResolvedValue(mockUser);
+      prisma.user.findUnique.mockResolvedValue(mockUser);
       mockJwtService.signToken.mockResolvedValue('new_token');
 
       const result = await service.refresh({ refreshToken: 'valid_refresh' });

@@ -1,7 +1,7 @@
 import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { LoginDto, VerifyDto, RefreshDto } from '@shared/dto/auth.dto';
 import { AuthTokens, JwtService } from '@shared/main';
-import { prisma } from '@user-app/prisma/prisma.client';
+import { PrismaService } from '@user-app/prisma/prisma.service';
 import * as bcrypt from 'bcryptjs';
 import * as jose from 'jose';
 
@@ -16,7 +16,10 @@ export class AuthService implements IAuthService {
   private readonly jwtExpiresIn: string;
   private readonly jwtRefreshExpiresIn: string;
 
-  constructor(private readonly jwtService: JwtService) {
+  constructor(
+    private readonly jwtService: JwtService,
+    private readonly prisma: PrismaService,
+  ) {
     this.jwtExpiresIn = process.env.JWT_EXPIRES_IN || '15m';
     this.jwtRefreshExpiresIn = process.env.JWT_REFRESH_EXPIRES_IN || '7d';
   }
@@ -24,7 +27,7 @@ export class AuthService implements IAuthService {
   async login(dto: LoginDto): Promise<AuthTokens & { user: object }> {
     try {
       // Find user by email
-      const user = await prisma.user.findUnique({
+      const user = await this.prisma.user.findUnique({
         where: { email: dto.email },
       });
 
@@ -81,7 +84,7 @@ export class AuthService implements IAuthService {
       const userId = decoded.sub;
 
       // Verify user still exists and is active
-      const user = await prisma.user.findUnique({
+      const user = await this.prisma.user.findUnique({
         where: { id: userId },
         select: { id: true, isActive: true },
       });
@@ -113,7 +116,7 @@ export class AuthService implements IAuthService {
       const userId = decoded.sub;
 
       // Verify user still exists and is active
-      const user = await prisma.user.findUnique({
+      const user = await this.prisma.user.findUnique({
         where: { id: userId },
         select: {
           id: true,

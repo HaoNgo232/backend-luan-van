@@ -3,34 +3,41 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto, UpdateUserDto, UserRole } from '@shared/dto/user.dto';
 import * as bcrypt from 'bcryptjs';
-import { prisma } from '@user-app/prisma/prisma.client';
 import { UserResponse } from '@shared/main';
-
-// Mock Prisma
-jest.mock('@user-app/prisma/prisma.client', () => ({
-  prisma: {
-    user: {
-      findUnique: jest.fn(),
-      findMany: jest.fn(),
-      create: jest.fn(),
-      update: jest.fn(),
-      count: jest.fn(),
-    },
-  },
-}));
+import { PrismaService } from '@user-app/prisma/prisma.service';
 
 // Mock bcrypt
 jest.mock('bcryptjs');
 
+// Mock PrismaService
+const mockPrismaService = {
+  user: {
+    findUnique: jest.fn(),
+    findMany: jest.fn(),
+    create: jest.fn(),
+    update: jest.fn(),
+    delete: jest.fn(),
+    count: jest.fn(),
+  },
+};
+
 describe('UsersService', () => {
   let service: UsersService;
+  let prisma: typeof mockPrismaService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [UsersService],
+      providers: [
+        UsersService,
+        {
+          provide: PrismaService,
+          useValue: mockPrismaService,
+        },
+      ],
     }).compile();
 
     service = module.get<UsersService>(UsersService);
+    prisma = module.get(PrismaService);
 
     // Clear all mocks before each test
     jest.clearAllMocks();
@@ -53,7 +60,7 @@ describe('UsersService', () => {
         updatedAt: new Date(),
       };
 
-      (prisma.user.findUnique as jest.Mock).mockResolvedValue(mockUser);
+      prisma.user.findUnique.mockResolvedValue(mockUser);
 
       const result = await service.findById('1');
 
@@ -74,7 +81,7 @@ describe('UsersService', () => {
     });
 
     it('should throw NotFoundException when user not found', async () => {
-      (prisma.user.findUnique as jest.Mock).mockResolvedValue(null);
+      prisma.user.findUnique.mockResolvedValue(null);
 
       await expect(service.findById('999')).rejects.toThrow(NotFoundException);
     });
@@ -96,9 +103,9 @@ describe('UsersService', () => {
         role: 'CUSTOMER',
       };
 
-      (prisma.user.findUnique as jest.Mock).mockResolvedValue(null);
+      prisma.user.findUnique.mockResolvedValue(null);
       (bcrypt.hash as jest.Mock).mockResolvedValue('hashed_password');
-      (prisma.user.create as jest.Mock).mockResolvedValue(mockCreatedUser);
+      prisma.user.create.mockResolvedValue(mockCreatedUser);
 
       const result = await service.create(createDto);
 
@@ -113,7 +120,7 @@ describe('UsersService', () => {
         password: 'password123',
       };
 
-      (prisma.user.findUnique as jest.Mock).mockResolvedValue({
+      prisma.user.findUnique.mockResolvedValue({
         id: '1',
         email: createDto.email,
       });
@@ -140,11 +147,11 @@ describe('UsersService', () => {
         isActive: true,
       };
 
-      (prisma.user.findUnique as jest.Mock).mockResolvedValue({
+      prisma.user.findUnique.mockResolvedValue({
         id: '1',
         email: 'test@example.com',
       });
-      (prisma.user.update as jest.Mock).mockResolvedValue(mockUpdatedUser);
+      prisma.user.update.mockResolvedValue(mockUpdatedUser);
 
       const result = await service.update('1', updateDto);
 
@@ -166,7 +173,7 @@ describe('UsersService', () => {
     });
 
     it('should throw NotFoundException when user not found', async () => {
-      (prisma.user.findUnique as jest.Mock).mockResolvedValue(null);
+      prisma.user.findUnique.mockResolvedValue(null);
 
       await expect(
         service.update('999', { fullName: 'Test', role: UserRole.ADMIN }),
@@ -188,8 +195,8 @@ describe('UsersService', () => {
         },
       ];
 
-      (prisma.user.findMany as jest.Mock).mockResolvedValue(mockUsers);
-      (prisma.user.count as jest.Mock).mockResolvedValue(1);
+      prisma.user.findMany.mockResolvedValue(mockUsers);
+      prisma.user.count.mockResolvedValue(1);
 
       const result = await service.list({ page: 1, pageSize: 10 });
 
@@ -215,8 +222,8 @@ describe('UsersService', () => {
         },
       ];
 
-      (prisma.user.findMany as jest.Mock).mockResolvedValue(mockUsers);
-      (prisma.user.count as jest.Mock).mockResolvedValue(1);
+      prisma.user.findMany.mockResolvedValue(mockUsers);
+      prisma.user.count.mockResolvedValue(1);
 
       await service.list({ search: 'john', page: 1, pageSize: 10 });
 

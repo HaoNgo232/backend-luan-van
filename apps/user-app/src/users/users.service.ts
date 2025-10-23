@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { CreateUserDto, UpdateUserDto, ListUsersDto } from '@shared/dto/user.dto';
 import { ListUsersResponse, UserResponse } from '@shared/main';
-import { prisma } from '@user-app/prisma/prisma.client';
+import { PrismaService } from '@user-app/prisma/prisma.service';
 import * as bcrypt from 'bcryptjs';
 
 export interface IUserService {
@@ -15,9 +15,11 @@ export interface IUserService {
 
 @Injectable()
 export class UsersService implements IUserService {
+  constructor(private readonly prisma: PrismaService) {}
+
   async findById(id: string): Promise<UserResponse> {
     try {
-      const user = await prisma.user.findUnique({
+      const user = await this.prisma.user.findUnique({
         where: { id },
         select: {
           id: true,
@@ -45,7 +47,7 @@ export class UsersService implements IUserService {
 
   async findByEmail(email: string): Promise<UserResponse> {
     try {
-      const user = await prisma.user.findUnique({
+      const user = await this.prisma.user.findUnique({
         where: { email },
         select: {
           id: true,
@@ -74,7 +76,7 @@ export class UsersService implements IUserService {
   async create(dto: CreateUserDto): Promise<UserResponse> {
     try {
       // Check if user already exists
-      const existingUser = await prisma.user.findUnique({
+      const existingUser = await this.prisma.user.findUnique({
         where: { email: dto.email },
       });
 
@@ -86,7 +88,7 @@ export class UsersService implements IUserService {
       const passwordHash = await bcrypt.hash(dto.password, 10);
 
       // Create user
-      const user = await prisma.user.create({
+      const user = await this.prisma.user.create({
         data: {
           email: dto.email,
           passwordHash,
@@ -112,7 +114,7 @@ export class UsersService implements IUserService {
     try {
       await this.validateUserExists(id);
 
-      const user = await prisma.user.update({
+      const user = await this.prisma.user.update({
         where: { id },
         data: {
           fullName: dto.fullName,
@@ -144,7 +146,7 @@ export class UsersService implements IUserService {
     try {
       await this.validateUserExists(id);
 
-      await prisma.user.update({
+      await this.prisma.user.update({
         where: { id },
         data: { isActive: false },
       });
@@ -180,13 +182,13 @@ export class UsersService implements IUserService {
         : {};
 
       const [users, total] = await Promise.all([
-        prisma.user.findMany({
+        this.prisma.user.findMany({
           where,
           skip,
           take: pageSize,
           orderBy: { createdAt: 'desc' },
         }),
-        prisma.user.count({ where }),
+        this.prisma.user.count({ where }),
       ]);
 
       return { users, total, page, pageSize };
@@ -197,7 +199,7 @@ export class UsersService implements IUserService {
   }
 
   private async validateUserExists(id: string): Promise<void> {
-    const user = await prisma.user.findUnique({ where: { id } });
+    const user = await this.prisma.user.findUnique({ where: { id } });
     if (!user) {
       throw new NotFoundException(`User with ID ${id} not found`);
     }
