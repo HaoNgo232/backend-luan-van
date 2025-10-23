@@ -1,5 +1,14 @@
 import { HttpStatus } from '@nestjs/common';
-import { ParsedError } from './error-parser';
+
+/**
+ * Parsed Error Structure
+ * Standard format for all parsed errors
+ */
+export interface ParsedError {
+  statusCode: number;
+  message: string;
+  details: unknown;
+}
 
 /**
  * Error Detection Rule

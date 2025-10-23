@@ -7,6 +7,4 @@ export * from './utils/index';
 export * from './jwt/jwt.service';
 export * from './jwt/jwt.module';
 
-export * from './auth';
 export * from './events';
-export * from './logger';

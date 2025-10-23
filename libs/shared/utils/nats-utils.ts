@@ -1,9 +1,21 @@
-// In libs/shared/utils/nats-utils.ts (new file)
 import { firstValueFrom, timeout, retry, catchError } from 'rxjs';
 import { HttpException, HttpStatus } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { Error } from '@shared/main';
 
+/**
+ * Gửi tin nhắn đến microservice với cơ chế retry tự động.
+ *
+ * @template T - Kiểu dữ liệu của response
+ * @param client - NestJS ClientProxy để gửi tin nhắn
+ * @param pattern - Tên pattern của microservice
+ * @param data - Dữ liệu gửi đi
+ * @returns Promise chứa response từ microservice
+ * @throws HttpException nếu lỗi sau khi retry
+ *
+ * @example
+ * const result = await sendWithRetry<User>(client, 'user.get', { id: 1 });
+ */
 export async function sendWithRetry<T>(
   client: ClientProxy,
   pattern: string,
