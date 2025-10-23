@@ -1,3 +1,5 @@
+import { UserRole } from '@shared/dto/user.dto';
+
 /**
  * User Response Types
  * Based on User model trong user-app Prisma schema
@@ -7,7 +9,7 @@ export type UserResponse = {
   email: string;
   fullName: string | null;
   phone: string | null;
-  role: string; // CUSTOMER, ADMIN
+  role: UserRole; // CUSTOMER, ADMIN
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;

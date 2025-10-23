@@ -1,5 +1,7 @@
 import { Injectable, UnauthorizedException, OnModuleInit } from '@nestjs/common';
 import * as jose from 'jose';
+import * as fs from 'fs/promises';
+import * as path from 'path';
 
 /**
  * JWT Service - RSA-based Token Signing and Verification
@@ -30,40 +32,39 @@ export class JwtService implements OnModuleInit {
    * Initialize service and load RSA keys from environment variables
    * Called automatically by NestJS on module initialization
    */
-  async onModuleInit() {
+  async onModuleInit(): Promise<void> {
     await this.loadKeys();
   }
 
   /**
-   * Load RSA keys from environment variables
+   * Load RSA keys from PEM files in keys/ directory
    *
-   * Environment variables expected:
-   * - JWT_PUBLIC_KEY_BASE64: Base64-encoded public key PEM (required for all services)
-   * - JWT_PRIVATE_KEY_BASE64: Base64-encoded private key PEM (only for user-app)
+   * Expected files:
+   * - keys/public-key.pem: Public key PEM (required for all services)
+   * - keys/private-key.pem: Private key PEM (optional - only for user-app)
    *
-   * @throws Error if public key is missing or keys cannot be imported
+   * @throws Error if public key file is missing or keys cannot be imported
    */
-  private async loadKeys() {
+  private async loadKeys(): Promise<void> {
     try {
-      // Load public key (required for all services)
-      const publicKeyBase64 = process.env.JWT_PUBLIC_KEY_BASE64;
-      if (!publicKeyBase64) {
-        throw new Error('JWT_PUBLIC_KEY_BASE64 environment variable is required');
-      }
+      const keysDir = path.join(process.cwd(), 'keys');
 
-      const publicKeyPEM = Buffer.from(publicKeyBase64, 'base64').toString('utf-8');
+      // Load public key (required for all services)
+      const publicKeyPath = path.join(keysDir, 'public-key.pem');
+      const publicKeyPEM = await fs.readFile(publicKeyPath, 'utf-8');
       this.publicKey = await jose.importSPKI(publicKeyPEM, this.algorithm);
 
-      console.log('[JwtService] ✅ Public key loaded successfully');
+      console.log('[JwtService] ✅ Public key loaded successfully from file');
 
       // Load private key (optional - only for user-app)
-      const privateKeyBase64 = process.env.JWT_PRIVATE_KEY_BASE64;
-      if (privateKeyBase64) {
-        const privateKeyPEM = Buffer.from(privateKeyBase64, 'base64').toString('utf-8');
+      const privateKeyPath = path.join(keysDir, 'private-key.pem');
+      try {
+        const privateKeyPEM = await fs.readFile(privateKeyPath, 'utf-8');
         this.privateKey = await jose.importPKCS8(privateKeyPEM, this.algorithm);
         console.log('[JwtService] ✅ Private key loaded successfully (signing enabled)');
-      } else {
-        console.log('[JwtService] ℹ️  Private key not loaded (verification-only mode)');
+      } catch {
+        // Private key is optional - service can still verify tokens without it
+        console.log('[JwtService] ℹ️  Private key not found (verification-only mode)');
       }
     } catch (error) {
       console.error('[JwtService] ❌ Failed to load RSA keys:', error);
@@ -154,10 +155,7 @@ export class JwtService implements OnModuleInit {
       }
 
       if (error instanceof jose.errors.JWTClaimValidationFailed) {
-        const claimError = error as jose.errors.JWTClaimValidationFailed;
-        throw new UnauthorizedException(
-          `Token validation failed: ${claimError.claim} claim invalid`,
-        );
+        throw new UnauthorizedException(`Token validation failed: ${error.claim} claim invalid`);
       }
 
       if (error instanceof jose.errors.JWSSignatureVerificationFailed) {
