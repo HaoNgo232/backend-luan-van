@@ -1,6 +1,7 @@
 import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { LoginDto, VerifyDto, RefreshDto, RegisterDto } from '@shared/dto/auth.dto';
-import { AuthTokens, JwtService } from '@shared/main';
+import { AuthTokens, JwtService, UserResponse, UserRole } from '@shared/main';
+import { Prisma } from '@user-app/prisma/generated/client';
 import { PrismaService } from '@user-app/prisma/prisma.service';
 import * as bcrypt from 'bcryptjs';
 import * as jose from 'jose';
@@ -9,7 +10,7 @@ export interface IAuthService {
   login(dto: LoginDto): Promise<AuthTokens>;
   register(dto: RegisterDto): Promise<AuthTokens & { user: object }>;
   verify(dto: VerifyDto): Promise<jose.JWTPayload>;
-  refresh(dto: RefreshDto): Promise<AuthTokens>;
+  refresh(dto: RefreshDto): Promise<{ accessToken: string; refreshToken: string }>;
 }
 
 @Injectable()
@@ -25,7 +26,7 @@ export class AuthService implements IAuthService {
     this.jwtRefreshExpiresIn = process.env.JWT_REFRESH_EXPIRES_IN || '7d';
   }
 
-  async login(dto: LoginDto): Promise<AuthTokens & { user: object }> {
+  async login(dto: LoginDto): Promise<AuthTokens> {
     try {
       // Find and validate user
       const user = await this.validateUserCredentials(dto.email, dto.password);
@@ -37,14 +38,16 @@ export class AuthService implements IAuthService {
         role: user.role,
       });
 
-      return {
+      const results = {
         ...tokens,
         user: {
           sub: user.id,
           email: user.email,
           role: user.role,
         },
-      };
+      } as AuthTokens;
+
+      return results;
     } catch (error) {
       if (error instanceof UnauthorizedException) {
         throw error;
@@ -54,7 +57,7 @@ export class AuthService implements IAuthService {
     }
   }
 
-  async register(dto: RegisterDto): Promise<AuthTokens & { user: object }> {
+  async register(dto: RegisterDto): Promise<AuthTokens> {
     try {
       // Check email có ton tại chưa
       const existingEmail = await this.prisma.user.findUnique({
@@ -85,14 +88,16 @@ export class AuthService implements IAuthService {
         role: newUser.role,
       });
 
-      return {
+      const results = {
         ...tokens,
         user: {
           sub: newUser.id,
           email: newUser.email,
           role: newUser.role,
         },
-      };
+      } as AuthTokens;
+
+      return results;
     } catch (error) {
       if (error instanceof BadRequestException) throw error;
       console.error('[AuthService] register error:', error);
@@ -132,7 +137,7 @@ export class AuthService implements IAuthService {
     }
   }
 
-  async refresh(dto: RefreshDto): Promise<AuthTokens> {
+  async refresh(dto: RefreshDto): Promise<{ accessToken: string; refreshToken: string }> {
     try {
       // Verify refresh token with JwtService
       const decoded = await this.jwtService.verifyToken(dto.refreshToken);
@@ -159,12 +164,13 @@ export class AuthService implements IAuthService {
         throw new UnauthorizedException('Invalid refresh token');
       }
 
-      // Generate new tokens
-      return await this.generateTokens({
+      const tokens = await this.generateTokens({
         sub: user.id, // Use 'sub' claim (JOSE standard)
         email: user.email,
         role: user.role,
       });
+
+      return tokens;
     } catch (error) {
       if (error instanceof UnauthorizedException) {
         throw error;
@@ -174,7 +180,9 @@ export class AuthService implements IAuthService {
     }
   }
 
-  private async generateTokens(payload: jose.JWTPayload): Promise<AuthTokens> {
+  private async generateTokens(
+    payload: jose.JWTPayload,
+  ): Promise<{ accessToken: string; refreshToken: string }> {
     const expiresIn = this.parseExpiresIn(this.jwtExpiresIn);
     const refreshExpiresIn = this.parseExpiresIn(this.jwtRefreshExpiresIn);
 
@@ -242,13 +250,7 @@ export class AuthService implements IAuthService {
    * Find user by email
    * @throws UnauthorizedException if user not found
    */
-  private async findUserByEmail(email: string): Promise<{
-    id: string;
-    email: string;
-    role: string;
-    passwordHash: string;
-    isActive: boolean;
-  }> {
+  private async findUserByEmail(email: string): Promise<UserResponse & { passwordHash: string }> {
     const user = await this.prisma.user.findUnique({
       where: { email },
       select: {
@@ -264,7 +266,9 @@ export class AuthService implements IAuthService {
       throw new UnauthorizedException('Invalid email or password');
     }
 
-    return user;
+    const results = user as UserResponse & { passwordHash: string };
+
+    return results;
   }
 
   /**

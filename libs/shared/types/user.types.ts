@@ -41,4 +41,9 @@ export type User = {
 export type AuthTokens = {
   accessToken: string;
   refreshToken: string;
+  user: {
+    sub: string;
+    email: string;
+    role: UserRole;
+  };
 };

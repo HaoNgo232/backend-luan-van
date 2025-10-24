@@ -2,14 +2,15 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestMicroservice } from '@nestjs/common';
 import { ClientsModule, Transport, ClientProxy } from '@nestjs/microservices';
 import { UserAppModule } from '../src/user-app.module';
+import { PrismaService } from '@user-app/prisma/prisma.service';
 import { EVENTS } from '@shared/events';
-import { LoginDto, RefreshDto } from '@shared/dto/auth.dto';
-import { CreateUserDto, UserRole } from '@shared/dto/user.dto';
+import { LoginDto, RefreshDto, RegisterDto } from '@shared/dto/auth.dto';
 import { firstValueFrom } from 'rxjs';
 
 describe('AuthController (e2e)', () => {
   let app: INestMicroservice;
   let client: ClientProxy;
+  let prisma: PrismaService;
   let testUserEmail: string;
   let testUserPassword: string;
   let accessToken: string;
@@ -24,7 +25,7 @@ describe('AuthController (e2e)', () => {
             name: 'USER_SERVICE_CLIENT',
             transport: Transport.NATS,
             options: {
-              servers: [process.env.NATS_URL ?? 'nats://localhost:4222'],
+              servers: [process.env.NATS_URL ?? 'nats://localhost:4223'],
             },
           },
         ]),
@@ -34,36 +35,76 @@ describe('AuthController (e2e)', () => {
     app = moduleFixture.createNestMicroservice({
       transport: Transport.NATS,
       options: {
-        servers: [process.env.NATS_URL ?? 'nats://localhost:4222'],
+        servers: [process.env.NATS_URL ?? 'nats://localhost:4223'],
         queue: 'auth-test',
       },
     });
 
     await app.listen();
     client = moduleFixture.get('USER_SERVICE_CLIENT');
+    prisma = moduleFixture.get<PrismaService>(PrismaService);
     await client.connect();
-
-    // Create test user
-    testUserEmail = `auth-test-${Date.now()}@example.com`;
-    testUserPassword = 'Test@123456';
-
-    const createDto: CreateUserDto = {
-      email: testUserEmail,
-      password: testUserPassword,
-      fullName: 'Auth Test User',
-      role: UserRole.CUSTOMER,
-    };
-
-    await firstValueFrom(client.send(EVENTS.USER.CREATE, createDto));
   });
 
   afterAll(async () => {
+    // Clean up test data
+    await prisma.user.deleteMany({});
     await client.close();
     await app.close();
   });
 
+  beforeEach(async () => {
+    // Clean database trước mỗi test
+    await prisma.user.deleteMany({});
+
+    // Tạo test user cho các test cần authentication
+    testUserEmail = `auth-test-${Date.now()}@example.com`;
+    testUserPassword = 'Test@123456';
+  });
+
   describe('Authentication Flow', () => {
+    it('should register a new user', async () => {
+      const registerDto: RegisterDto = {
+        email: `register-${Date.now()}@example.com`,
+        password: 'Register@123',
+        fullName: 'New Register User',
+      };
+
+      const result = await firstValueFrom(client.send(EVENTS.AUTH.REGISTER, registerDto));
+
+      expect(result).toBeDefined();
+      expect(result.accessToken).toBeDefined();
+      expect(result.refreshToken).toBeDefined();
+      expect(result.user).toBeDefined();
+      expect(result.user.email).toBe(registerDto.email);
+      expect(result.user.fullName).toBe(registerDto.fullName);
+    });
+
+    it('should fail registration with duplicate email', async () => {
+      const registerDto: RegisterDto = {
+        email: 'duplicate-register@example.com',
+        password: 'Register@123',
+        fullName: 'Duplicate User',
+      };
+
+      // Đăng ký lần đầu
+      await firstValueFrom(client.send(EVENTS.AUTH.REGISTER, registerDto));
+
+      // Thử đăng ký lại với email trùng
+      await expect(
+        firstValueFrom(client.send(EVENTS.AUTH.REGISTER, registerDto)),
+      ).rejects.toThrow();
+    });
+
     it('should login successfully', async () => {
+      // Tạo user trước khi login
+      const registerDto: RegisterDto = {
+        email: testUserEmail,
+        password: testUserPassword,
+        fullName: 'Login Test User',
+      };
+      await firstValueFrom(client.send(EVENTS.AUTH.REGISTER, registerDto));
+
       const loginDto: LoginDto = {
         email: testUserEmail,
         password: testUserPassword,
@@ -82,9 +123,26 @@ describe('AuthController (e2e)', () => {
     });
 
     it('should fail login with wrong password', async () => {
+      // Tạo user trước
+      const registerDto: RegisterDto = {
+        email: 'wrongpass@example.com',
+        password: 'CorrectPass@123',
+        fullName: 'Wrong Pass Test',
+      };
+      await firstValueFrom(client.send(EVENTS.AUTH.REGISTER, registerDto));
+
       const loginDto: LoginDto = {
-        email: testUserEmail,
+        email: 'wrongpass@example.com',
         password: 'WrongPassword123',
+      };
+
+      await expect(firstValueFrom(client.send(EVENTS.AUTH.LOGIN, loginDto))).rejects.toThrow();
+    });
+
+    it('should fail login with non-existent email', async () => {
+      const loginDto: LoginDto = {
+        email: 'nonexistent@example.com',
+        password: 'AnyPassword123',
       };
 
       await expect(firstValueFrom(client.send(EVENTS.AUTH.LOGIN, loginDto))).rejects.toThrow();

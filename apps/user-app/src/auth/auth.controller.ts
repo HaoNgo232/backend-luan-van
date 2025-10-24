@@ -10,7 +10,7 @@ export interface IAuthController {
   login(dto: LoginDto): Promise<AuthTokens & { user: object }>;
   register(dto: RegisterDto): Promise<AuthTokens & { user: object }>;
   verify(dto: VerifyDto): Promise<JWTPayload>;
-  refresh(dto: RefreshDto): Promise<AuthTokens>;
+  refresh(dto: RefreshDto): Promise<{ accessToken: string; refreshToken: string }>;
 }
 
 @Controller()
@@ -33,7 +33,7 @@ export class AuthController implements IAuthController {
   }
 
   @MessagePattern(EVENTS.AUTH.REFRESH)
-  refresh(@Payload() dto: RefreshDto): Promise<AuthTokens> {
+  refresh(@Payload() dto: RefreshDto): Promise<{ accessToken: string; refreshToken: string }> {
     return this.authService.refresh(dto);
   }
 }
