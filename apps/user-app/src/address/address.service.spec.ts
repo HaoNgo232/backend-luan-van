@@ -18,6 +18,7 @@ describe('AddressService', () => {
       findMany: jest.fn(),
       findUnique: jest.fn(),
       findFirst: jest.fn(),
+      count: jest.fn(), // ✅ Add count method
       create: jest.fn(),
       update: jest.fn(),
       updateMany: jest.fn(),
@@ -126,10 +127,12 @@ describe('AddressService', () => {
       const mockCreatedAddress = {
         id: 'addr1',
         ...dto,
+        isDefault: false, // Not first address
         createdAt: new Date(),
       };
 
       mockPrismaService.user.findUnique.mockResolvedValue(mockUser);
+      mockPrismaService.address.count.mockResolvedValue(2); // ✅ User already has 2 addresses
       mockPrismaService.address.create.mockResolvedValue(mockCreatedAddress);
 
       const result = await service.create(dto);
@@ -138,6 +141,9 @@ describe('AddressService', () => {
       expect(prisma.user.findUnique).toHaveBeenCalledWith({
         where: { id: dto.userId },
         select: { id: true },
+      });
+      expect(prisma.address.count).toHaveBeenCalledWith({
+        where: { userId: dto.userId },
       });
       expect(prisma.address.create).toHaveBeenCalledWith({
         data: {
@@ -148,7 +154,7 @@ describe('AddressService', () => {
           ward: dto.ward,
           district: dto.district,
           city: dto.city,
-          isDefault: false,
+          isDefault: false, // Not first, so stays false
         },
       });
     });
@@ -173,15 +179,69 @@ describe('AddressService', () => {
       };
 
       mockPrismaService.user.findUnique.mockResolvedValue(mockUser);
+      mockPrismaService.address.count.mockResolvedValue(2); // ✅ User has addresses
       mockPrismaService.address.updateMany.mockResolvedValue({ count: 2 });
       mockPrismaService.address.create.mockResolvedValue(mockCreatedAddress);
 
       const result = await service.create(dto);
 
       expect(result).toEqual(mockCreatedAddress);
+      expect(prisma.address.count).toHaveBeenCalledWith({
+        where: { userId: dto.userId },
+      });
       expect(prisma.address.updateMany).toHaveBeenCalledWith({
         where: { userId: dto.userId },
         data: { isDefault: false },
+      });
+    });
+
+    it('nên tự động set địa chỉ đầu tiên làm default dù client set false', async () => {
+      const dto: AddressCreateDto = {
+        userId: 'user123',
+        fullName: 'Nguyễn Văn A',
+        phone: '0123456789',
+        street: '123 Lê Lợi',
+        ward: 'Phường 1',
+        district: 'Quận 1',
+        city: 'TP.HCM',
+        isDefault: false, // Client set false
+      };
+
+      const mockUser = { id: 'user123' };
+      const mockCreatedAddress = {
+        id: 'addr1',
+        ...dto,
+        isDefault: true, // But service auto-set to true for first address
+        createdAt: new Date(),
+      };
+
+      mockPrismaService.user.findUnique.mockResolvedValue(mockUser);
+      mockPrismaService.address.count.mockResolvedValue(0); // ✅ First address (count = 0)
+      mockPrismaService.address.updateMany.mockResolvedValue({ count: 0 });
+      mockPrismaService.address.create.mockResolvedValue(mockCreatedAddress);
+
+      const result = await service.create(dto);
+
+      expect(result).toEqual(mockCreatedAddress);
+      expect(prisma.address.count).toHaveBeenCalledWith({
+        where: { userId: dto.userId },
+      });
+      // Should call updateMany even for first address (to ensure consistency)
+      expect(prisma.address.updateMany).toHaveBeenCalledWith({
+        where: { userId: dto.userId },
+        data: { isDefault: false },
+      });
+      expect(prisma.address.create).toHaveBeenCalledWith({
+        data: {
+          userId: dto.userId,
+          fullName: dto.fullName,
+          phone: dto.phone,
+          street: dto.street,
+          ward: dto.ward,
+          district: dto.district,
+          city: dto.city,
+          isDefault: true, // ✅ Auto-set to true for first address
+        },
       });
     });
 
