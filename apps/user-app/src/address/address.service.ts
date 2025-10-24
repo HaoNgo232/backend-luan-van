@@ -46,7 +46,8 @@ export class AddressService implements IAddressService {
         throw new NotFoundException(`Người dùng ${dto.userId} không tồn tại`);
       }
 
-      // Nếu đây là địa chỉ mặc định, bỏ mặc định của các địa chỉ khác
+      // QUAN TRỌNG: Chỉ được có 1 địa chỉ mặc định cho mỗi user
+      // Nếu đánh dấu địa chỉ mới là mặc định → bỏ mặc định tất cả địa chỉ cũ
       if (dto.isDefault) {
         await this.prisma.address.updateMany({
           where: { userId: dto.userId },
@@ -135,11 +136,13 @@ export class AddressService implements IAddressService {
         where: { id },
       });
 
-      // Nếu địa chỉ vừa xóa là địa chỉ mặc định, set địa chỉ đầu tiên còn lại làm mặc định
+      // LOGIC QUAN TRỌNG: Auto-assign địa chỉ mặc định mới
+      // Nếu xóa địa chỉ mặc định → tự động chọn địa chỉ cũ nhất còn lại làm mặc định
+      // Tránh trường hợp user không có địa chỉ mặc định
       if (existingAddress.isDefault) {
         const firstAddress = await this.prisma.address.findFirst({
           where: { userId: existingAddress.userId },
-          orderBy: { createdAt: 'asc' },
+          orderBy: { createdAt: 'asc' }, // Lấy địa chỉ tạo đầu tiên
         });
 
         if (firstAddress) {

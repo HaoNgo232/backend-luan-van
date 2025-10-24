@@ -10,6 +10,20 @@ export class LoginDto {
   password: string;
 }
 
+export class RegisterDto {
+  @IsNotEmpty()
+  @IsEmail()
+  email: string;
+
+  @IsNotEmpty()
+  @IsString()
+  password: string;
+
+  @IsNotEmpty()
+  @IsString()
+  fullName: string;
+}
+
 export class VerifyDto {
   @IsNotEmpty()
   @IsString()

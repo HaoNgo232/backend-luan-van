@@ -86,7 +86,8 @@ export class UsersService implements IUserService {
         throw new BadRequestException('Email already exists');
       }
 
-      // Hash password
+      // Hash password với bcrypt (salt rounds = 10)
+      // QUAN TRỌNG: Không bao giờ lưu plain password vào DB
       const passwordHash = await bcrypt.hash(dto.password, 10);
 
       // Create user
@@ -96,7 +97,7 @@ export class UsersService implements IUserService {
           passwordHash,
           fullName: dto.fullName,
           phone: dto.phone,
-          role: dto.role || 'CUSTOMER',
+          role: dto.role || 'CUSTOMER', // Mặc định role là CUSTOMER nếu không truyền
         },
       });
 
@@ -105,6 +106,7 @@ export class UsersService implements IUserService {
       }
 
       // Type assertion: Prisma enum → Shared enum
+      // LƯU Ý: Response KHÔNG bao gồm passwordHash (vì không select nó)
       return user as UserResponse;
     } catch (error) {
       if (error instanceof BadRequestException) throw error;
@@ -165,10 +167,14 @@ export class UsersService implements IUserService {
 
   async list(query: ListUsersDto): Promise<ListUsersResponse> {
     try {
+      // Pagination: page bắt đầu từ 1 (không phải 0)
       const page = query.page || 1;
       const pageSize = query.pageSize || 10;
-      const skip = (page - 1) * pageSize;
+      const skip = (page - 1) * pageSize; // skip = số record bỏ qua
 
+      // Search filter: Tìm kiếm trong email HOẶC fullName
+      // 'insensitive': không phân biệt hoa/thường (case-insensitive)
+      // 'contains': tìm chuỗi con (giống LIKE '%search%' trong SQL)
       const where = query.search
         ? {
             OR: [
@@ -183,14 +189,17 @@ export class UsersService implements IUserService {
               },
             ],
           }
-        : {};
+        : {}; // Nếu không có search → lấy tất cả
 
+      // Promise.all: Chạy song song 2 query để tối ưu performance
+      // - findMany: lấy data cho trang hiện tại
+      // - count: đếm tổng số record (để tính tổng số trang)
       const [users, total] = await Promise.all([
         this.prisma.user.findMany({
           where,
           skip,
           take: pageSize,
-          orderBy: { createdAt: 'desc' },
+          orderBy: { createdAt: 'desc' }, // Mới nhất lên đầu
         }),
         this.prisma.user.count({ where }),
       ]);

@@ -2,12 +2,13 @@ import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { AuthService } from '@user-app/auth/auth.service';
 import { EVENTS } from '@shared/events';
-import { LoginDto, VerifyDto, RefreshDto } from '@shared/dto/auth.dto';
+import { LoginDto, VerifyDto, RefreshDto, RegisterDto } from '@shared/dto/auth.dto';
 import { AuthTokens } from '@shared/main';
 import { JWTPayload } from 'jose';
 
 export interface IAuthController {
   login(dto: LoginDto): Promise<AuthTokens & { user: object }>;
+  register(dto: RegisterDto): Promise<AuthTokens & { user: object }>;
   verify(dto: VerifyDto): Promise<JWTPayload>;
   refresh(dto: RefreshDto): Promise<AuthTokens>;
 }
@@ -19,6 +20,11 @@ export class AuthController implements IAuthController {
   @MessagePattern(EVENTS.AUTH.LOGIN)
   login(@Payload() dto: LoginDto): Promise<AuthTokens & { user: object }> {
     return this.authService.login(dto);
+  }
+
+  @MessagePattern(EVENTS.AUTH.REGISTER)
+  register(@Payload() dto: RegisterDto): Promise<AuthTokens & { user: object }> {
+    return this.authService.register(dto);
   }
 
   @MessagePattern(EVENTS.AUTH.VERIFY)

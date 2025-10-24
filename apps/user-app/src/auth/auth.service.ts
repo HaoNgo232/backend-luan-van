@@ -1,5 +1,5 @@
 import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
-import { LoginDto, VerifyDto, RefreshDto } from '@shared/dto/auth.dto';
+import { LoginDto, VerifyDto, RefreshDto, RegisterDto } from '@shared/dto/auth.dto';
 import { AuthTokens, JwtService } from '@shared/main';
 import { PrismaService } from '@user-app/prisma/prisma.service';
 import * as bcrypt from 'bcryptjs';
@@ -7,6 +7,7 @@ import * as jose from 'jose';
 
 export interface IAuthService {
   login(dto: LoginDto): Promise<AuthTokens>;
+  register(dto: RegisterDto): Promise<AuthTokens & { user: object }>;
   verify(dto: VerifyDto): Promise<jose.JWTPayload>;
   refresh(dto: RefreshDto): Promise<AuthTokens>;
 }
@@ -26,26 +27,8 @@ export class AuthService implements IAuthService {
 
   async login(dto: LoginDto): Promise<AuthTokens & { user: object }> {
     try {
-      // Find user by email
-      const user = await this.prisma.user.findUnique({
-        where: { email: dto.email },
-      });
-
-      if (!user) {
-        throw new UnauthorizedException('Invalid email or password');
-      }
-
-      // Check if user is active
-      if (!user.isActive) {
-        throw new UnauthorizedException('Account is deactivated');
-      }
-
-      // Verify password
-      const isPasswordValid = await bcrypt.compare(dto.password, user.passwordHash);
-
-      if (!isPasswordValid) {
-        throw new UnauthorizedException('Invalid email or password');
-      }
+      // Find and validate user
+      const user = await this.validateUserCredentials(dto.email, dto.password);
 
       // Generate tokens
       const tokens = await this.generateTokens({
@@ -68,6 +51,52 @@ export class AuthService implements IAuthService {
       }
       console.error('[AuthService] login error:', error);
       throw new BadRequestException('Login failed');
+    }
+  }
+
+  async register(dto: RegisterDto): Promise<AuthTokens & { user: object }> {
+    try {
+      // Check email có ton tại chưa
+      const existingEmail = await this.prisma.user.findUnique({
+        where: { email: dto.email },
+      });
+      if (existingEmail) {
+        throw new BadRequestException('Email already exists');
+      }
+
+      // Hash password với bcrypt (salt rounds = 10)
+      const passwordHash = await bcrypt.hash(dto.password, 10);
+
+      // Tạo user mới
+      // LƯU Ý: Register luôn tạo CUSTOMER, không cho phép tự đăng ký ADMIN
+      const newUser = await this.prisma.user.create({
+        data: {
+          email: dto.email,
+          passwordHash,
+          fullName: dto.fullName,
+          role: 'CUSTOMER', // Hardcoded - ADMIN phải tạo từ admin panel
+        },
+      });
+
+      // Tự động login sau khi register thành công → trả về tokens luôn
+      const tokens = await this.generateTokens({
+        sub: newUser.id, // 'sub' là standard claim trong JWT (subject/user ID)
+        email: newUser.email,
+        role: newUser.role,
+      });
+
+      return {
+        ...tokens,
+        user: {
+          sub: newUser.id,
+          email: newUser.email,
+          role: newUser.role,
+        },
+      };
+    } catch (error) {
+      if (error instanceof BadRequestException) throw error;
+      console.error('[AuthService] register error:', error);
+      throw new BadRequestException('Failed to register user');
     }
   }
 
@@ -149,7 +178,10 @@ export class AuthService implements IAuthService {
     const expiresIn = this.parseExpiresIn(this.jwtExpiresIn);
     const refreshExpiresIn = this.parseExpiresIn(this.jwtRefreshExpiresIn);
 
-    // Use JwtService to sign tokens with RSA private key
+    // Tạo 2 loại token song song để tối ưu performance:
+    // - accessToken: thời gian sống ngắn (15m) - dùng cho API calls
+    // - refreshToken: thời gian sống dài (7d) - dùng để lấy accessToken mới
+    // QUAN TRỌNG: Cả 2 đều dùng RSA private key để sign
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signToken(payload, expiresIn),
       this.jwtService.signToken(payload, refreshExpiresIn),
@@ -176,5 +208,84 @@ export class AuthService implements IAuthService {
     };
 
     return value * (multipliers[unit] || 60);
+  }
+
+  /**
+   * Validate user credentials (email & password)
+   * @throws UnauthorizedException if credentials are invalid or user is inactive
+   */
+  private async validateUserCredentials(
+    email: string,
+    password: string,
+  ): Promise<{
+    id: string;
+    email: string;
+    role: string;
+  }> {
+    // Find user by email
+    const user = await this.findUserByEmail(email);
+
+    // Check if user is active
+    this.checkUserActive(user);
+
+    // Verify password
+    await this.verifyPassword(password, user.passwordHash);
+
+    return {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+    };
+  }
+
+  /**
+   * Find user by email
+   * @throws UnauthorizedException if user not found
+   */
+  private async findUserByEmail(email: string): Promise<{
+    id: string;
+    email: string;
+    role: string;
+    passwordHash: string;
+    isActive: boolean;
+  }> {
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        passwordHash: true,
+        isActive: true,
+      },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('Invalid email or password');
+    }
+
+    return user;
+  }
+
+  /**
+   * Check if user account is active
+   * @throws UnauthorizedException if user is deactivated
+   */
+  private checkUserActive(user: { isActive: boolean }): void {
+    if (!user.isActive) {
+      throw new UnauthorizedException('Account is deactivated');
+    }
+  }
+
+  /**
+   * Verify password against hash
+   * @throws UnauthorizedException if password is invalid
+   */
+  private async verifyPassword(password: string, passwordHash: string): Promise<void> {
+    const isPasswordValid = await bcrypt.compare(password, passwordHash);
+
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Invalid email or password');
+    }
   }
 }
