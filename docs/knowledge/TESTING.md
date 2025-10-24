@@ -396,6 +396,55 @@ npm test -- --detectOpenHandles
 
 ---
 
+## 🎨 Recommended Testing Patterns
+
+### Use Shared Test Helpers
+
+```typescript
+import { expectRpcError, createTestEmail } from '@shared/testing/rpc-test-helpers';
+
+describe('UserService', () => {
+  it('should throw error for invalid user', async () => {
+    await expectRpcError(
+      firstValueFrom(client.send(EVENTS.USER.GET, 'invalid-id')),
+      'không tồn tại',
+    );
+  });
+
+  it('should create user with unique email', async () => {
+    const email = createTestEmail('user');
+    const result = await firstValueFrom(
+      client.send(EVENTS.USER.CREATE, { email, password: 'Test@123' }),
+    );
+    expect(result.email).toBe(email);
+  });
+});
+```
+
+### Use Typed RPC Exceptions
+
+```typescript
+import { EntityNotFoundRpcException } from '@shared/exceptions/rpc-exceptions';
+
+// ✅ GOOD - Type-safe, consistent error format
+async getUser(id: string) {
+  const user = await this.prisma.user.findUnique({ where: { id } });
+  if (!user) {
+    throw new EntityNotFoundRpcException('User', id);
+  }
+  return user;
+}
+
+// ❌ BAD - Generic error, inconsistent format
+async getUser(id: string) {
+  const user = await this.prisma.user.findUnique({ where: { id } });
+  if (!user) {
+    throw new RpcException('User not found');
+  }
+  return user;
+}
+```
+
 ## 📚 Additional Resources
 
 - [NestJS Testing](https://docs.nestjs.com/fundamentals/testing)
