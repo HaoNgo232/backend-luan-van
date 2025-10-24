@@ -76,6 +76,11 @@ export abstract class BaseGatewayController {
   private createHttpError(error: unknown, pattern: string): HttpException {
     console.error(`[Gateway] Error calling ${pattern}:`, error);
 
+    // Timeout error - check name property first
+    if (this.isTimeoutError(error)) {
+      return new HttpException('Service request timeout', HttpStatus.REQUEST_TIMEOUT);
+    }
+
     // Parse error từ microservice (RPC error)
     if (this.isRpcError(error)) {
       return new HttpException(
@@ -84,13 +89,21 @@ export abstract class BaseGatewayController {
       );
     }
 
-    // Timeout error
-    if (error instanceof Error && error.name === 'TimeoutError') {
-      return new HttpException('Service request timeout', HttpStatus.REQUEST_TIMEOUT);
-    }
-
     // Generic error
     return new HttpException('Internal server error', HttpStatus.INTERNAL_SERVER_ERROR);
+  }
+
+  /**
+   * Type guard để check timeout error
+   */
+  private isTimeoutError(error: unknown): boolean {
+    return (
+      (error instanceof Error && error.name === 'TimeoutError') ||
+      (typeof error === 'object' &&
+        error !== null &&
+        'name' in error &&
+        error.name === 'TimeoutError')
+    );
   }
 
   /**

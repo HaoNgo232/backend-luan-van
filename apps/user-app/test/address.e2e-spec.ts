@@ -8,11 +8,33 @@ import { AddressCreateDto, AddressUpdateDto, AddressSetDefaultDto } from '@share
 import { RegisterDto } from '@shared/dto/auth.dto';
 import { firstValueFrom } from 'rxjs';
 
+// Helper function to assert NATS RpcException errors
+const expectRpcError = async (
+  promise: Promise<unknown>,
+  expectedMessage?: string,
+): Promise<void> => {
+  try {
+    await promise;
+    throw new Error('Expected RpcException but got success');
+  } catch (error: unknown) {
+    expect(error).toBeDefined();
+    if (expectedMessage) {
+      const err = error as Record<string, unknown>;
+      const msg =
+        (typeof err.message === 'string' ? err.message : '') ||
+        (typeof err.msg === 'string' ? err.msg : '') ||
+        '';
+      expect(msg).toContain(expectedMessage);
+    }
+  }
+};
+
 describe('AddressController (e2e)', () => {
   let app: INestMicroservice;
   let client: ClientProxy;
   let prisma: PrismaService;
   let testUserId: string;
+  let deleteTestUserId: string;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -65,7 +87,7 @@ describe('AddressController (e2e)', () => {
     };
 
     const authResult = await firstValueFrom(client.send(EVENTS.AUTH.REGISTER, registerDto));
-    testUserId = authResult.user.id;
+    testUserId = authResult.user.sub;
   });
 
   describe('ADDRESS.CREATE', () => {
@@ -88,7 +110,8 @@ describe('AddressController (e2e)', () => {
       expect(result.fullName).toBe(createDto.fullName);
       expect(result.phone).toBe(createDto.phone);
       expect(result.city).toBe(createDto.city);
-      expect(result.isDefault).toBe(false);
+      // Địa chỉ đầu tiên tự động là default dù client set false
+      expect(result.isDefault).toBe(true);
     });
 
     it('should set first address as default automatically', async () => {
@@ -121,7 +144,10 @@ describe('AddressController (e2e)', () => {
         isDefault: false,
       };
 
-      await expect(firstValueFrom(client.send(EVENTS.ADDRESS.CREATE, createDto))).rejects.toThrow();
+      await expectRpcError(
+        firstValueFrom(client.send(EVENTS.ADDRESS.CREATE, createDto)),
+        'không tồn tại',
+      );
     });
   });
 
@@ -175,7 +201,7 @@ describe('AddressController (e2e)', () => {
       const newUser = await firstValueFrom(client.send(EVENTS.AUTH.REGISTER, newUserDto));
 
       const result = await firstValueFrom(
-        client.send(EVENTS.ADDRESS.LIST_BY_USER, { userId: newUser.user.id }),
+        client.send(EVENTS.ADDRESS.LIST_BY_USER, { userId: newUser.user.sub }),
       );
 
       expect(result).toBeInstanceOf(Array);
@@ -225,11 +251,12 @@ describe('AddressController (e2e)', () => {
         fullName: 'Updated Name',
       };
 
-      await expect(
+      await expectRpcError(
         firstValueFrom(
           client.send(EVENTS.ADDRESS.UPDATE, { id: 'non-existent-id', dto: updateDto }),
         ),
-      ).rejects.toThrow();
+        'không tồn tại',
+      );
     });
   });
 
@@ -293,9 +320,10 @@ describe('AddressController (e2e)', () => {
         addressId: 'non-existent-id',
       };
 
-      await expect(
+      await expectRpcError(
         firstValueFrom(client.send(EVENTS.ADDRESS.SET_DEFAULT, setDefaultDto)),
-      ).rejects.toThrow();
+        'không tồn tại',
+      );
     });
   });
 
@@ -303,9 +331,23 @@ describe('AddressController (e2e)', () => {
     let addressId: string;
 
     beforeEach(async () => {
+      // Clean database
+      await prisma.address.deleteMany({});
+      await prisma.user.deleteMany({});
+
+      // Tạo user mới cho delete tests
+      const registerDto: RegisterDto = {
+        email: `delete-test-${Date.now()}@example.com`,
+        password: 'Test@123456',
+        fullName: 'Delete Test User',
+      };
+      const authResult = await firstValueFrom(client.send(EVENTS.AUTH.REGISTER, registerDto));
+      deleteTestUserId = authResult.user.sub;
+
+      // Tạo address để test delete
       const created = await prisma.address.create({
         data: {
-          userId: testUserId,
+          userId: deleteTestUserId,
           fullName: 'To Delete',
           phone: '0912345678',
           city: 'HCM',
@@ -323,7 +365,7 @@ describe('AddressController (e2e)', () => {
 
       expect(result).toBeDefined();
       expect(result.success).toBe(true);
-      expect(result.message).toContain('deleted');
+      expect(result.message).toContain('xóa');
 
       // Verify trong database
       const deleted = await prisma.address.findUnique({
@@ -333,16 +375,26 @@ describe('AddressController (e2e)', () => {
     });
 
     it('should throw error when deleting non-existent address', async () => {
-      await expect(
+      await expectRpcError(
         firstValueFrom(client.send(EVENTS.ADDRESS.DELETE, 'non-existent-id')),
-      ).rejects.toThrow();
+        'không tồn tại',
+      );
     });
 
-    it('should throw error when deleting default address if user has other addresses', async () => {
+    it('should auto-assign new default when deleting default address with other addresses', async () => {
+      // Tạo user mới cho test này
+      const registerDto: RegisterDto = {
+        email: `default-delete-test-${Date.now()}@example.com`,
+        password: 'Test@123456',
+        fullName: 'Default Delete Test User',
+      };
+      const authResult = await firstValueFrom(client.send(EVENTS.AUTH.REGISTER, registerDto));
+      const userId = authResult.user.sub;
+
       // Tạo 2 addresses, 1 default
       const defaultAddr = await prisma.address.create({
         data: {
-          userId: testUserId,
+          userId,
           fullName: 'Default Address',
           phone: '0912345678',
           city: 'HCM',
@@ -353,9 +405,9 @@ describe('AddressController (e2e)', () => {
         },
       });
 
-      await prisma.address.create({
+      const nonDefaultAddr = await prisma.address.create({
         data: {
-          userId: testUserId,
+          userId,
           fullName: 'Non-default Address',
           phone: '0912345679',
           city: 'HN',
@@ -366,10 +418,16 @@ describe('AddressController (e2e)', () => {
         },
       });
 
-      // Thử xóa địa chỉ default
-      await expect(
-        firstValueFrom(client.send(EVENTS.ADDRESS.DELETE, defaultAddr.id)),
-      ).rejects.toThrow();
+      // Xóa địa chỉ default - should succeed and auto-assign new default
+      const result = await firstValueFrom(client.send(EVENTS.ADDRESS.DELETE, defaultAddr.id));
+
+      expect(result.success).toBe(true);
+
+      // Verify địa chỉ còn lại trở thành default
+      const remainingAddr = await prisma.address.findUnique({
+        where: { id: nonDefaultAddr.id },
+      });
+      expect(remainingAddr?.isDefault).toBe(true);
     });
   });
 });

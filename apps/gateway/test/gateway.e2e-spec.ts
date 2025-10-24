@@ -1,8 +1,10 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
+import { JwtService } from '@shared/main';
 
 describe('Gateway (e2e)', () => {
   let app: INestApplication;
@@ -12,6 +14,15 @@ describe('Gateway (e2e)', () => {
   let productService: any;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let cartService: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let jwtService: any;
+
+  const mockAccessToken = 'mock.valid.token';
+  const mockUserPayload = {
+    sub: 'user-123',
+    email: 'test@example.com',
+    role: 'CUSTOMER',
+  };
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -45,6 +56,11 @@ describe('Gateway (e2e)', () => {
       .useValue({
         send: jest.fn(),
       })
+      .overrideProvider(JwtService)
+      .useValue({
+        verifyToken: jest.fn(),
+        signToken: jest.fn(),
+      })
       .compile();
 
     app = moduleFixture.createNestApplication();
@@ -53,6 +69,10 @@ describe('Gateway (e2e)', () => {
     userService = moduleFixture.get('USER_SERVICE');
     productService = moduleFixture.get('PRODUCT_SERVICE');
     cartService = moduleFixture.get('CART_SERVICE');
+    jwtService = moduleFixture.get(JwtService);
+
+    // Setup default JWT verification
+    jwtService.verifyToken.mockResolvedValue(mockUserPayload);
   });
 
   afterAll(async () => {
@@ -63,26 +83,46 @@ describe('Gateway (e2e)', () => {
     jest.clearAllMocks();
   });
 
-  describe('GET /users/by-id', () => {
+  describe('GET /users/:id', () => {
     it('should return user data when service responds', async () => {
       const mockUser = {
-        id: '1',
+        id: 'user-123',
         email: 'test@example.com',
         fullName: 'Test User',
+        role: 'CUSTOMER',
       };
 
       userService.send.mockReturnValue(of(mockUser));
 
       const response = await request(app.getHttpServer())
-        .get('/users/by-id?id=1')
+        .get('/users/user-123')
+        .set('Authorization', `Bearer ${mockAccessToken}`)
         .expect(200);
 
       expect(response.body).toEqual(mockUser);
       expect(userService.send).toHaveBeenCalled();
+      expect(jwtService.verifyToken).toHaveBeenCalledWith(mockAccessToken);
+    });
+
+    it('should return 401 when no token provided', async () => {
+      await request(app.getHttpServer()).get('/users/user-123').expect(401);
+
+      expect(userService.send).not.toHaveBeenCalled();
+    });
+
+    it('should return 401 when token is invalid', async () => {
+      jwtService.verifyToken.mockRejectedValueOnce(new Error('Invalid token'));
+
+      await request(app.getHttpServer())
+        .get('/users/user-123')
+        .set('Authorization', 'Bearer invalid.token')
+        .expect(401);
+
+      expect(userService.send).not.toHaveBeenCalled();
     });
   });
 
-  describe('GET /products/by-slug', () => {
+  describe('GET /products/slug/:slug', () => {
     it('should return product data when service responds', async () => {
       const mockProduct = {
         id: '1',
@@ -94,7 +134,7 @@ describe('Gateway (e2e)', () => {
       productService.send.mockReturnValue(of(mockProduct));
 
       const response = await request(app.getHttpServer())
-        .get('/products/by-slug?slug=test-product')
+        .get('/products/slug/test-product')
         .expect(200);
 
       expect(response.body).toEqual(mockProduct);
@@ -128,6 +168,94 @@ describe('Gateway (e2e)', () => {
       expect(response.body.status).toBe('ok');
       expect(typeof response.body.timestamp).toBe('string');
       expect(typeof response.body.uptime).toBe('number');
+    });
+  });
+
+  describe('Authentication Flow', () => {
+    it('should allow access to public endpoints without token', async () => {
+      const mockProduct = {
+        id: '1',
+        name: 'Public Product',
+        slug: 'public-product',
+        priceInt: 1999,
+      };
+
+      productService.send.mockReturnValue(of(mockProduct));
+
+      await request(app.getHttpServer()).get('/products/slug/public-product').expect(200);
+
+      expect(productService.send).toHaveBeenCalled();
+    });
+
+    it('should deny access to protected endpoints without token', async () => {
+      await request(app.getHttpServer()).get('/users/user-123').expect(401);
+
+      expect(userService.send).not.toHaveBeenCalled();
+    });
+
+    it('should allow access to protected endpoints with valid token', async () => {
+      const mockUser = {
+        id: 'user-123',
+        email: 'test@example.com',
+        fullName: 'Test User',
+        role: 'CUSTOMER',
+      };
+
+      userService.send.mockReturnValue(of(mockUser));
+
+      await request(app.getHttpServer())
+        .get('/users/user-123')
+        .set('Authorization', `Bearer ${mockAccessToken}`)
+        .expect(200);
+
+      expect(jwtService.verifyToken).toHaveBeenCalledWith(mockAccessToken);
+      expect(userService.send).toHaveBeenCalled();
+    });
+  });
+
+  describe('Error Handling', () => {
+    it('should handle microservice timeout errors', async () => {
+      // Mock Observable that times out
+      userService.send.mockReturnValue(
+        throwError(() => ({ name: 'TimeoutError', message: 'Timeout' })),
+      );
+
+      await request(app.getHttpServer())
+        .get('/users/user-123')
+        .set('Authorization', `Bearer ${mockAccessToken}`)
+        .expect(408); // Request Timeout
+    });
+
+    it('should handle microservice errors and return appropriate status', async () => {
+      const notFoundError = new Error('User not found');
+      Object.assign(notFoundError, { statusCode: 404 });
+
+      userService.send.mockReturnValue(throwError(() => notFoundError));
+
+      await request(app.getHttpServer())
+        .get('/users/non-existent')
+        .set('Authorization', `Bearer ${mockAccessToken}`)
+        .expect(404);
+    });
+  });
+
+  describe('Request/Response Cycle', () => {
+    it('should successfully process request and return response', async () => {
+      const mockProduct = {
+        id: '1',
+        name: 'Test Product',
+        slug: 'test-product',
+        priceInt: 1999,
+      };
+
+      productService.send.mockReturnValue(of(mockProduct));
+
+      const response = await request(app.getHttpServer())
+        .get('/products/slug/test-product')
+        .expect(200);
+
+      expect(response.body).toEqual(mockProduct);
+      expect(productService.send).toHaveBeenCalled();
     });
   });
 });

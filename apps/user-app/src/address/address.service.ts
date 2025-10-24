@@ -53,9 +53,19 @@ export class AddressService implements IAddressService {
         });
       }
 
+      // Kiểm tra xem user đã có địa chỉ nào chưa
+      const existingAddressCount = await this.prisma.address.count({
+        where: { userId: dto.userId },
+      });
+
+      // LOGIC QUAN TRỌNG: Địa chỉ đầu tiên tự động là default
+      // Dù client set isDefault: false, địa chỉ đầu tiên LUÔN là default
+      const isFirstAddress = existingAddressCount === 0;
+      const shouldBeDefault = isFirstAddress || dto.isDefault;
+
       // QUAN TRỌNG: Chỉ được có 1 địa chỉ mặc định cho mỗi user
       // Nếu đánh dấu địa chỉ mới là mặc định → bỏ mặc định tất cả địa chỉ cũ
-      if (dto.isDefault) {
+      if (shouldBeDefault) {
         await this.prisma.address.updateMany({
           where: { userId: dto.userId },
           data: { isDefault: false },
@@ -72,7 +82,7 @@ export class AddressService implements IAddressService {
           ward: dto.ward,
           district: dto.district,
           city: dto.city,
-          isDefault: dto.isDefault ?? false,
+          isDefault: shouldBeDefault,
         },
       });
 

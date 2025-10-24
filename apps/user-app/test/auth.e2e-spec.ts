@@ -14,8 +14,6 @@ describe('AuthController (e2e)', () => {
   let prisma: PrismaService;
   let testUserEmail: string;
   let testUserPassword: string;
-  let accessToken: string;
-  let refreshToken: string;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -163,54 +161,48 @@ describe('AuthController (e2e)', () => {
     });
 
     it('should verify valid token', async () => {
-      // Đảm bảo có token hợp lệ từ login test trước
-      if (!accessToken) {
-        // Login để lấy token nếu chưa có
-        const registerDto: RegisterDto = {
-          email: `verify-test-${Date.now()}@example.com`,
-          password: 'Test@123456',
-          fullName: 'Verify Test User',
-        };
-        await firstValueFrom(client.send(EVENTS.AUTH.REGISTER, registerDto));
+      // Tạo user mới và login để có token fresh
+      const registerDto: RegisterDto = {
+        email: `verify-test-${Date.now()}@example.com`,
+        password: 'Test@123456',
+        fullName: 'Verify Test User',
+      };
+      const registerResult = await firstValueFrom(client.send(EVENTS.AUTH.REGISTER, registerDto));
 
-        const loginDto: LoginDto = {
-          email: registerDto.email,
-          password: registerDto.password,
-        };
-        const loginResult = await firstValueFrom(client.send(EVENTS.AUTH.LOGIN, loginDto));
-        accessToken = loginResult.accessToken;
-        refreshToken = loginResult.refreshToken;
-        testUserEmail = registerDto.email;
-      }
+      const loginDto: LoginDto = {
+        email: registerDto.email,
+        password: registerDto.password,
+      };
+      const loginResult = await firstValueFrom(client.send(EVENTS.AUTH.LOGIN, loginDto));
+      const tokenToVerify = loginResult.accessToken;
 
-      const result = await firstValueFrom(client.send(EVENTS.AUTH.VERIFY, { token: accessToken }));
+      const result = await firstValueFrom(
+        client.send(EVENTS.AUTH.VERIFY, { token: tokenToVerify }),
+      );
 
       expect(result).toBeDefined();
       expect(result.sub).toBeDefined();
-      expect(result.email).toBe(testUserEmail);
+      expect(result.email).toBe(registerDto.email);
     });
 
     it('should refresh token', async () => {
-      // Đảm bảo có refresh token hợp lệ
-      if (!refreshToken) {
-        // Login để lấy token nếu chưa có
-        const registerDto: RegisterDto = {
-          email: `refresh-test-${Date.now()}@example.com`,
-          password: 'Test@123456',
-          fullName: 'Refresh Test User',
-        };
-        await firstValueFrom(client.send(EVENTS.AUTH.REGISTER, registerDto));
+      // Tạo user mới và login để có refresh token fresh
+      const registerDto: RegisterDto = {
+        email: `refresh-test-${Date.now()}@example.com`,
+        password: 'Test@123456',
+        fullName: 'Refresh Test User',
+      };
+      await firstValueFrom(client.send(EVENTS.AUTH.REGISTER, registerDto));
 
-        const loginDto: LoginDto = {
-          email: registerDto.email,
-          password: registerDto.password,
-        };
-        const loginResult = await firstValueFrom(client.send(EVENTS.AUTH.LOGIN, loginDto));
-        refreshToken = loginResult.refreshToken;
-      }
+      const loginDto: LoginDto = {
+        email: registerDto.email,
+        password: registerDto.password,
+      };
+      const loginResult = await firstValueFrom(client.send(EVENTS.AUTH.LOGIN, loginDto));
+      const tokenToRefresh = loginResult.refreshToken;
 
       const refreshDto: RefreshDto = {
-        refreshToken,
+        refreshToken: tokenToRefresh,
       };
 
       const result = await firstValueFrom(client.send(EVENTS.AUTH.REFRESH, refreshDto));

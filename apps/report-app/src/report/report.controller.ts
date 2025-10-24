@@ -2,11 +2,7 @@ import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { ReportService } from '@report-app/report/report.service';
 import { EVENTS } from '@shared/events';
-import {
-  SalesSummaryDto,
-  ProductPerformanceDto,
-  UserCohortDto,
-} from '@shared/dto/report.dto';
+import { SalesSummaryDto, ProductPerformanceDto, UserCohortDto } from '@shared/dto/report.dto';
 
 @Controller()
 export class ReportController {

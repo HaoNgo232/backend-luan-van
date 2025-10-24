@@ -1,5 +1,4 @@
 import 'reflect-metadata';
-import { Test, TestingModule } from '@nestjs/testing';
 import { ExecutionContext, ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@shared/main';
@@ -288,7 +287,7 @@ describe('AuthGuard + RolesGuard Integration', () => {
         sub: 'user-123',
         email: 'test@test.com',
         // role: missing
-      } as any);
+      } as { sub: string; email: string });
 
       const request = { headers: { authorization: 'Bearer valid_token' } };
       const context = createMockContext(request);
@@ -347,7 +346,7 @@ describe('AuthGuard + RolesGuard Integration', () => {
 
       // Step 3: RolesGuard never gets called
       reflector.getAllAndOverride.mockReturnValue([UserRole.ADMIN]);
-      // This would work, but AuthGuard already failed
+      expect(jwtService.verifyToken).toHaveBeenCalledWith('invalid_token');
     });
 
     it('should fail at RolesGuard step (wrong role)', async () => {

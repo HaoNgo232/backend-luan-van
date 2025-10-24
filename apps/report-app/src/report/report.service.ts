@@ -1,9 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import {
-  SalesSummaryDto,
-  ProductPerformanceDto,
-  UserCohortDto,
-} from '@shared/dto/report.dto';
+import { SalesSummaryDto, ProductPerformanceDto, UserCohortDto } from '@shared/dto/report.dto';
 
 @Injectable()
 export class ReportService {

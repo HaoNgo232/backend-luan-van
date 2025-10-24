@@ -1,4 +1,3 @@
-import { User } from './../../prisma/generated/client/index.d';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
@@ -23,6 +22,7 @@ describe('AuthController', () => {
     user: {
       sub: 'user-123',
       email: 'test@example.com',
+      fullName: 'Test User',
       role: UserRole.CUSTOMER,
     },
   };

@@ -119,7 +119,7 @@ export class CategoryValidator {
 
       visitedIds.add(currentId);
 
-      const current = await this.prisma.category.findUnique({
+      const current: { parentId: string | null } | null = await this.prisma.category.findUnique({
         where: { id: currentId },
         select: { parentId: true },
       });
@@ -128,7 +128,8 @@ export class CategoryValidator {
         break;
       }
 
-      currentId = current.parentId;
+      const parentId: string | null = current.parentId;
+      currentId = parentId;
     }
 
     return false;

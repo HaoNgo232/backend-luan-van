@@ -47,7 +47,10 @@ export class HealthController {
   }
 
   @Get('live')
-  liveness() {
+  liveness(): {
+    status: string;
+    timestamp: string;
+  } {
     return {
       status: 'ok',
       timestamp: new Date().toISOString(),
@@ -59,12 +62,10 @@ export class HealthController {
     status: string;
     services: Record<string, { status: string; latency?: number }>;
   }> {
-    const startTime = Date.now();
-
     const [userHealth, productHealth, orderHealth] = await Promise.all([
-      this.checkService(this.userService, 'user-service'),
-      this.checkService(this.productService, 'product-service'),
-      this.checkService(this.orderService, 'order-service'),
+      this.checkService(this.userService),
+      this.checkService(this.productService),
+      this.checkService(this.orderService),
     ]);
 
     return {
@@ -77,10 +78,7 @@ export class HealthController {
     };
   }
 
-  private async checkService(
-    client: ClientProxy,
-    serviceName: string,
-  ): Promise<{ status: string; latency?: number }> {
+  private async checkService(client: ClientProxy): Promise<{ status: string; latency?: number }> {
     const startTime = Date.now();
 
     try {

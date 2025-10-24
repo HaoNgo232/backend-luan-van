@@ -5,16 +5,13 @@ import { ValidationPipe } from '@nestjs/common';
 import { AllRpcExceptionsFilter } from '@shared/filters/rpc-exception.filter';
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.createMicroservice<MicroserviceOptions>(
-    CartAppModule,
-    {
-      transport: Transport.NATS,
-      options: {
-        servers: [process.env.NATS_URL ?? 'nats://localhost:4222'],
-        queue: 'cart-app',
-      },
+  const app = await NestFactory.createMicroservice<MicroserviceOptions>(CartAppModule, {
+    transport: Transport.NATS,
+    options: {
+      servers: [process.env.NATS_URL ?? 'nats://localhost:4222'],
+      queue: 'cart-app',
     },
-  );
+  });
 
   app.useGlobalPipes(
     new ValidationPipe({

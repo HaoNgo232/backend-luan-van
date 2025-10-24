@@ -20,7 +20,7 @@ const requiredEnvVars = [
   'JWT_SECRET_KEY',
 ];
 
-const missingVars = requiredEnvVars.filter((key) => !process.env[key]);
+const missingVars = requiredEnvVars.filter(key => !process.env[key]);
 if (missingVars.length > 0) {
   throw new Error(
     `Missing required environment variables: ${missingVars.join(', ')}\n` +
@@ -38,5 +38,5 @@ global.beforeAll(() => {
 
 global.afterAll(async () => {
   // Cleanup logic if needed
-  await new Promise((resolve) => setTimeout(resolve, 500));
+  await new Promise(resolve => setTimeout(resolve, 500));
 });
