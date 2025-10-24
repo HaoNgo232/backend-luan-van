@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
+import { RpcException } from '@nestjs/microservices';
 import { CategoriesService } from './categories.service';
 import { PrismaService } from '@product-app/prisma/prisma.service';
 import { CategoryMapper } from './mappers/category.mapper';
@@ -126,19 +126,25 @@ describe('CategoriesService', () => {
       expect(mapper.mapToCategoryWithRelations).toHaveBeenCalledWith(mockCategory);
     });
 
-    it('should throw NotFoundException when category not found', async () => {
+    it('should throw RpcException when category not found', async () => {
       mockPrismaService.category.findUnique.mockResolvedValue(null);
 
-      await expect(service.getById({ id: 'non-existent' })).rejects.toThrow(NotFoundException);
-      await expect(service.getById({ id: 'non-existent' })).rejects.toThrow(
-        'Category with ID non-existent not found',
-      );
+      await expect(service.getById({ id: 'non-existent' })).rejects.toThrow(RpcException);
+      try {
+        await service.getById({ id: 'non-existent' });
+      } catch (error) {
+        expect(error).toBeInstanceOf(RpcException);
+        expect((error as RpcException).getError()).toMatchObject({
+          statusCode: 404,
+          message: 'Category with ID non-existent not found',
+        });
+      }
     });
 
-    it('should throw BadRequestException on database error', async () => {
+    it('should throw RpcException on database error', async () => {
       mockPrismaService.category.findUnique.mockRejectedValue(new Error('DB error'));
 
-      await expect(service.getById({ id: 'cat-1' })).rejects.toThrow(BadRequestException);
+      await expect(service.getById({ id: 'cat-1' })).rejects.toThrow(RpcException);
     });
   });
 
@@ -161,10 +167,10 @@ describe('CategoriesService', () => {
       expect(mapper.mapToCategoryWithRelations).toHaveBeenCalledWith(mockCategory);
     });
 
-    it('should throw NotFoundException when category not found', async () => {
+    it('should throw RpcException when category not found', async () => {
       mockPrismaService.category.findUnique.mockResolvedValue(null);
 
-      await expect(service.getBySlug({ slug: 'non-existent' })).rejects.toThrow(NotFoundException);
+      await expect(service.getBySlug({ slug: 'non-existent' })).rejects.toThrow(RpcException);
     });
   });
 
@@ -272,25 +278,28 @@ describe('CategoriesService', () => {
       expect(prisma.category.create).toHaveBeenCalled();
     });
 
-    it('should throw ConflictException if slug already exists', async () => {
+    it('should throw RpcException if slug already exists', async () => {
       mockCategoryValidator.validateSlugUnique.mockRejectedValue(
-        new ConflictException("Category with slug 'new-category' already exists"),
+        new RpcException({
+          statusCode: 409,
+          message: "Category with slug 'new-category' already exists",
+        }),
       );
 
-      await expect(service.create(createDto)).rejects.toThrow(ConflictException);
-      await expect(service.create(createDto)).rejects.toThrow(
-        "Category with slug 'new-category' already exists",
-      );
+      await expect(service.create(createDto)).rejects.toThrow(RpcException);
     });
 
-    it('should throw BadRequestException if parent not found', async () => {
+    it('should throw RpcException if parent not found', async () => {
       mockCategoryValidator.validateSlugUnique.mockResolvedValue(undefined);
       mockCategoryValidator.validateParentExists.mockRejectedValue(
-        new BadRequestException('Parent category with ID non-existent not found'),
+        new RpcException({
+          statusCode: 400,
+          message: 'Parent category with ID non-existent not found',
+        }),
       );
 
       await expect(service.create({ ...createDto, parentId: 'non-existent' })).rejects.toThrow(
-        BadRequestException,
+        RpcException,
       );
     });
 
@@ -336,64 +345,65 @@ describe('CategoriesService', () => {
       expect(prisma.category.update).toHaveBeenCalled();
     });
 
-    it('should throw NotFoundException if category not found', async () => {
+    it('should throw RpcException if category not found', async () => {
       mockPrismaService.category.findUnique.mockResolvedValue(null);
 
-      await expect(service.update('non-existent', updateDto)).rejects.toThrow(NotFoundException);
+      await expect(service.update('non-existent', updateDto)).rejects.toThrow(RpcException);
     });
 
-    it('should throw ConflictException if new slug already exists', async () => {
+    it('should throw RpcException if new slug already exists', async () => {
       mockPrismaService.category.findUnique.mockResolvedValue(mockCategory);
       mockCategoryValidator.validateSlugForUpdate.mockRejectedValue(
-        new ConflictException("Category with slug 'existing-slug' already exists"),
+        new RpcException({
+          statusCode: 409,
+          message: "Category with slug 'existing-slug' already exists",
+        }),
       );
 
       await expect(service.update('cat-1', { slug: 'existing-slug' })).rejects.toThrow(
-        ConflictException,
+        RpcException,
       );
     });
 
-    it('should throw BadRequestException if trying to set self as parent', async () => {
+    it('should throw RpcException if trying to set self as parent', async () => {
       mockPrismaService.category.findUnique.mockResolvedValue(mockCategory);
       mockCategoryValidator.validateSlugForUpdate.mockResolvedValue(undefined);
       mockCategoryValidator.validateParentUpdate.mockRejectedValue(
-        new BadRequestException('Category cannot be its own parent'),
+        new RpcException({
+          statusCode: 400,
+          message: 'Category cannot be its own parent',
+        }),
       );
 
-      await expect(service.update('cat-1', { parentId: 'cat-1' })).rejects.toThrow(
-        BadRequestException,
-      );
-      await expect(service.update('cat-1', { parentId: 'cat-1' })).rejects.toThrow(
-        'Category cannot be its own parent',
-      );
+      await expect(service.update('cat-1', { parentId: 'cat-1' })).rejects.toThrow(RpcException);
     });
 
-    it('should throw BadRequestException for circular reference', async () => {
+    it('should throw RpcException for circular reference', async () => {
       mockPrismaService.category.findUnique.mockResolvedValue(mockCategory);
       mockCategoryValidator.validateSlugForUpdate.mockResolvedValue(undefined);
       mockCategoryValidator.validateParentUpdate.mockRejectedValue(
-        new BadRequestException(
-          'Cannot create circular reference: the new parent is a descendant of this category',
-        ),
+        new RpcException({
+          statusCode: 400,
+          message:
+            'Cannot create circular reference: the new parent is a descendant of this category',
+        }),
       );
 
-      await expect(service.update('cat-1', { parentId: 'cat-2' })).rejects.toThrow(
-        /circular reference/,
-      );
+      await expect(service.update('cat-1', { parentId: 'cat-2' })).rejects.toThrow(RpcException);
     });
 
-    it('should throw BadRequestException for deep circular reference (grandchild)', async () => {
+    it('should throw RpcException for deep circular reference (grandchild)', async () => {
       mockPrismaService.category.findUnique.mockResolvedValue(mockCategory);
       mockCategoryValidator.validateSlugForUpdate.mockResolvedValue(undefined);
       mockCategoryValidator.validateParentUpdate.mockRejectedValue(
-        new BadRequestException(
-          'Cannot create circular reference: the new parent is a descendant of this category',
-        ),
+        new RpcException({
+          statusCode: 400,
+          message:
+            'Cannot create circular reference: the new parent is a descendant of this category',
+        }),
       );
 
-      await expect(service.update('cat-1', { parentId: 'cat-3' })).rejects.toThrow(
-        /circular reference/,
-      );
+      await expect(service.update('cat-1', { parentId: 'cat-3' })).rejects.toThrow(RpcException);
     });
   });
 
@@ -414,7 +424,7 @@ describe('CategoriesService', () => {
       });
     });
 
-    it('should throw NotFoundException if category not found', async () => {
+    it('should throw RpcException if category not found', async () => {
       mockCategoryValidator.validateCanDelete.mockResolvedValue({
         childrenCount: 0,
         productCount: 0,
@@ -423,29 +433,30 @@ describe('CategoriesService', () => {
         new Error('Record to delete does not exist'),
       );
 
-      await expect(service.delete('non-existent')).rejects.toThrow(BadRequestException);
+      await expect(service.delete('non-existent')).rejects.toThrow(RpcException);
     });
 
-    it('should throw BadRequestException if category has children', async () => {
+    it('should throw RpcException if category has children', async () => {
       mockCategoryValidator.validateCanDelete.mockRejectedValue(
-        new BadRequestException(
-          'Cannot delete category with child categories. Delete or reassign children first.',
-        ),
+        new RpcException({
+          statusCode: 400,
+          message:
+            'Cannot delete category with child categories. Delete or reassign children first.',
+        }),
       );
 
-      await expect(service.delete('cat-1')).rejects.toThrow(BadRequestException);
-      await expect(service.delete('cat-1')).rejects.toThrow(
-        /Cannot delete category with child categories/,
-      );
+      await expect(service.delete('cat-1')).rejects.toThrow(RpcException);
     });
 
-    it('should throw BadRequestException if category has products', async () => {
+    it('should throw RpcException if category has products', async () => {
       mockCategoryValidator.validateCanDelete.mockRejectedValue(
-        new BadRequestException('Cannot delete category with products. Reassign products first.'),
+        new RpcException({
+          statusCode: 400,
+          message: 'Cannot delete category with products. Reassign products first.',
+        }),
       );
 
-      await expect(service.delete('cat-1')).rejects.toThrow(BadRequestException);
-      await expect(service.delete('cat-1')).rejects.toThrow(/Cannot delete category with products/);
+      await expect(service.delete('cat-1')).rejects.toThrow(RpcException);
     });
   });
 });

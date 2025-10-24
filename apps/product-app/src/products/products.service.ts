@@ -1,9 +1,5 @@
-import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-  ConflictException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
+import { RpcException } from '@nestjs/microservices';
 import {
   ProductCreateDto,
   ProductUpdateDto,
@@ -43,7 +39,7 @@ export class ProductsService implements IProductsService {
 
   /**
    * Get product by ID
-   * @throws NotFoundException if product not found
+   * @throws RpcException if product not found
    */
   async getById(dto: ProductIdDto): Promise<ProductResponse> {
     try {
@@ -55,20 +51,26 @@ export class ProductsService implements IProductsService {
       });
 
       if (!product) {
-        throw new NotFoundException(`Product with ID ${dto.id} not found`);
+        throw new RpcException({
+          statusCode: 404,
+          message: `Product with ID ${dto.id} not found`,
+        });
       }
 
       return this.mapper.mapToProductResponse(product);
     } catch (error) {
-      if (error instanceof NotFoundException) throw error;
+      if (error instanceof RpcException) throw error;
       console.error('[ProductsService] getById error:', error);
-      throw new BadRequestException('Failed to retrieve product');
+      throw new RpcException({
+        statusCode: 400,
+        message: 'Failed to retrieve product',
+      });
     }
   }
 
   /**
    * Get product by slug
-   * @throws NotFoundException if product not found
+   * @throws RpcException if product not found
    */
   async getBySlug(dto: ProductSlugDto): Promise<ProductResponse> {
     try {
@@ -80,14 +82,20 @@ export class ProductsService implements IProductsService {
       });
 
       if (!product) {
-        throw new NotFoundException(`Product with slug '${dto.slug}' not found`);
+        throw new RpcException({
+          statusCode: 404,
+          message: `Product with slug '${dto.slug}' not found`,
+        });
       }
 
       return this.mapper.mapToProductResponse(product);
     } catch (error) {
-      if (error instanceof NotFoundException) throw error;
+      if (error instanceof RpcException) throw error;
       console.error('[ProductsService] getBySlug error:', error);
-      throw new BadRequestException('Failed to retrieve product');
+      throw new RpcException({
+        statusCode: 400,
+        message: 'Failed to retrieve product',
+      });
     }
   }
 
@@ -129,14 +137,17 @@ export class ProductsService implements IProductsService {
       };
     } catch (error) {
       console.error('[ProductsService] list error:', error);
-      throw new BadRequestException('Failed to retrieve products');
+      throw new RpcException({
+        statusCode: 400,
+        message: 'Failed to retrieve products',
+      });
     }
   }
 
   /**
    * Create a new product
-   * @throws ConflictException if SKU or slug already exists
-   * @throws BadRequestException if category doesn't exist
+   * @throws RpcException if SKU or slug already exists
+   * @throws RpcException if category doesn't exist
    */
   async create(dto: ProductCreateDto): Promise<ProductResponse> {
     try {
@@ -168,18 +179,21 @@ export class ProductsService implements IProductsService {
       console.log(`[ProductsService] Created product: ${product.id}`);
       return this.mapper.mapToProductResponse(product);
     } catch (error) {
-      if (error instanceof ConflictException || error instanceof BadRequestException) {
+      if (error instanceof RpcException) {
         throw error;
       }
       console.error('[ProductsService] create error:', error);
-      throw new BadRequestException('Failed to create product');
+      throw new RpcException({
+        statusCode: 400,
+        message: 'Failed to create product',
+      });
     }
   }
 
   /**
    * Update an existing product
-   * @throws NotFoundException if product not found
-   * @throws ConflictException if slug already exists
+   * @throws RpcException if product not found
+   * @throws RpcException if slug already exists
    */
   async update(id: string, dto: ProductUpdateDto): Promise<ProductResponse> {
     try {
@@ -189,7 +203,10 @@ export class ProductsService implements IProductsService {
       });
 
       if (!existing) {
-        throw new NotFoundException(`Product with ID ${id} not found`);
+        throw new RpcException({
+          statusCode: 404,
+          message: `Product with ID ${id} not found`,
+        });
       }
 
       // Validate slug uniqueness if updating slug
@@ -213,21 +230,20 @@ export class ProductsService implements IProductsService {
       console.log(`[ProductsService] Updated product: ${id}`);
       return this.mapper.mapToProductResponse(product);
     } catch (error) {
-      if (
-        error instanceof NotFoundException ||
-        error instanceof ConflictException ||
-        error instanceof BadRequestException
-      ) {
+      if (error instanceof RpcException) {
         throw error;
       }
       console.error('[ProductsService] update error:', error);
-      throw new BadRequestException('Failed to update product');
+      throw new RpcException({
+        statusCode: 400,
+        message: 'Failed to update product',
+      });
     }
   }
 
   /**
    * Delete a product
-   * @throws NotFoundException if product not found
+   * @throws RpcException if product not found
    */
   async delete(id: string): Promise<{ success: boolean; id: string }> {
     try {
@@ -236,7 +252,10 @@ export class ProductsService implements IProductsService {
       });
 
       if (!existing) {
-        throw new NotFoundException(`Product with ID ${id} not found`);
+        throw new RpcException({
+          statusCode: 404,
+          message: `Product with ID ${id} not found`,
+        });
       }
 
       await this.prisma.product.delete({
@@ -246,16 +265,19 @@ export class ProductsService implements IProductsService {
       console.log(`[ProductsService] Deleted product: ${id}`);
       return { success: true, id };
     } catch (error) {
-      if (error instanceof NotFoundException) throw error;
+      if (error instanceof RpcException) throw error;
       console.error('[ProductsService] delete error:', error);
-      throw new BadRequestException('Failed to delete product');
+      throw new RpcException({
+        statusCode: 400,
+        message: 'Failed to delete product',
+      });
     }
   }
 
   /**
    * Increment product stock
-   * @throws NotFoundException if product not found
-   * @throws BadRequestException if quantity is invalid
+   * @throws RpcException if product not found
+   * @throws RpcException if quantity is invalid
    */
   async incrementStock(dto: StockChangeDto): Promise<StockChangeResult> {
     try {
@@ -266,7 +288,10 @@ export class ProductsService implements IProductsService {
       });
 
       if (!product) {
-        throw new NotFoundException(`Product with ID ${dto.productId} not found`);
+        throw new RpcException({
+          statusCode: 404,
+          message: `Product with ID ${dto.productId} not found`,
+        });
       }
 
       const previousStock = product.stock;
@@ -288,18 +313,21 @@ export class ProductsService implements IProductsService {
         quantityChanged: dto.quantity,
       };
     } catch (error) {
-      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+      if (error instanceof RpcException) {
         throw error;
       }
       console.error('[ProductsService] incrementStock error:', error);
-      throw new BadRequestException('Failed to increment stock');
+      throw new RpcException({
+        statusCode: 400,
+        message: 'Failed to increment stock',
+      });
     }
   }
 
   /**
    * Decrement product stock
-   * @throws NotFoundException if product not found
-   * @throws BadRequestException if insufficient stock
+   * @throws RpcException if product not found
+   * @throws RpcException if insufficient stock
    */
   async decrementStock(dto: StockChangeDto): Promise<StockChangeResult> {
     try {
@@ -310,7 +338,10 @@ export class ProductsService implements IProductsService {
       });
 
       if (!product) {
-        throw new NotFoundException(`Product with ID ${dto.productId} not found`);
+        throw new RpcException({
+          statusCode: 404,
+          message: `Product with ID ${dto.productId} not found`,
+        });
       }
 
       const previousStock = product.stock;
@@ -335,11 +366,14 @@ export class ProductsService implements IProductsService {
         quantityChanged: dto.quantity,
       };
     } catch (error) {
-      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+      if (error instanceof RpcException) {
         throw error;
       }
       console.error('[ProductsService] decrementStock error:', error);
-      throw new BadRequestException('Failed to decrement stock');
+      throw new RpcException({
+        statusCode: 400,
+        message: 'Failed to decrement stock',
+      });
     }
   }
 

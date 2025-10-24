@@ -1,4 +1,5 @@
-import { BadRequestException, ConflictException, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
+import { RpcException } from '@nestjs/microservices';
 import { PrismaService } from '@product-app/prisma/prisma.service';
 
 /**
@@ -11,7 +12,7 @@ export class ProductValidator {
 
   /**
    * Validate SKU and slug uniqueness
-   * @throws ConflictException if SKU or slug already exists
+   * @throws RpcException if SKU or slug already exists
    */
   async validateUniqueSKUAndSlug(sku: string, slug: string): Promise<void> {
     const existing = await this.prisma.product.findFirst({
@@ -25,15 +26,21 @@ export class ProductValidator {
     }
 
     if (existing.sku === sku) {
-      throw new ConflictException(`Product with SKU '${sku}' already exists`);
+      throw new RpcException({
+        statusCode: 409,
+        message: `Product with SKU '${sku}' already exists`,
+      });
     }
 
-    throw new ConflictException(`Product with slug '${slug}' already exists`);
+    throw new RpcException({
+      statusCode: 409,
+      message: `Product with slug '${slug}' already exists`,
+    });
   }
 
   /**
    * Validate slug uniqueness when updating (allow same slug)
-   * @throws ConflictException if slug already exists for different product
+   * @throws RpcException if slug already exists for different product
    */
   async validateSlugForUpdate(newSlug: string | undefined, currentSlug: string): Promise<void> {
     if (!newSlug || newSlug === currentSlug) {
@@ -45,13 +52,16 @@ export class ProductValidator {
     });
 
     if (slugExists) {
-      throw new ConflictException(`Product with slug '${newSlug}' already exists`);
+      throw new RpcException({
+        statusCode: 409,
+        message: `Product with slug '${newSlug}' already exists`,
+      });
     }
   }
 
   /**
    * Validate category exists
-   * @throws BadRequestException if category not found
+   * @throws RpcException if category not found
    */
   async validateCategoryExists(categoryId: string | undefined): Promise<void> {
     if (!categoryId) {
@@ -63,29 +73,36 @@ export class ProductValidator {
     });
 
     if (!category) {
-      throw new BadRequestException(`Category with ID ${categoryId} not found`);
+      throw new RpcException({
+        statusCode: 400,
+        message: `Category with ID ${categoryId} not found`,
+      });
     }
   }
 
   /**
    * Validate stock change quantity
-   * @throws BadRequestException if quantity is invalid
+   * @throws RpcException if quantity is invalid
    */
   validateStockChangeQuantity(quantity: number): void {
     if (quantity <= 0) {
-      throw new BadRequestException('Stock change quantity must be greater than 0');
+      throw new RpcException({
+        statusCode: 400,
+        message: 'Stock change quantity must be greater than 0',
+      });
     }
   }
 
   /**
    * Validate sufficient stock for decrement
-   * @throws BadRequestException if insufficient stock
+   * @throws RpcException if insufficient stock
    */
   validateSufficientStock(currentStock: number, quantityToDecrement: number): void {
     if (currentStock - quantityToDecrement < 0) {
-      throw new BadRequestException(
-        `Insufficient stock. Available: ${currentStock}, Requested: ${quantityToDecrement}`,
-      );
+      throw new RpcException({
+        statusCode: 400,
+        message: `Insufficient stock. Available: ${currentStock}, Requested: ${quantityToDecrement}`,
+      });
     }
   }
 }

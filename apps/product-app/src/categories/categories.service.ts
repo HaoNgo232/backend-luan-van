@@ -1,9 +1,5 @@
-import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-  ConflictException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
+import { RpcException } from '@nestjs/microservices';
 import {
   CategoryCreateDto,
   CategoryUpdateDto,
@@ -41,7 +37,7 @@ export class CategoriesService implements ICategoriesService {
 
   /**
    * Get category by ID with relationships
-   * @throws NotFoundException if category not found
+   * @throws RpcException if category not found
    */
   async getById(dto: CategoryIdDto): Promise<CategoryWithRelations> {
     try {
@@ -54,20 +50,26 @@ export class CategoriesService implements ICategoriesService {
       });
 
       if (!category) {
-        throw new NotFoundException(`Category with ID ${dto.id} not found`);
+        throw new RpcException({
+          statusCode: 404,
+          message: `Category with ID ${dto.id} not found`,
+        });
       }
 
       return this.mapper.mapToCategoryWithRelations(category);
     } catch (error) {
-      if (error instanceof NotFoundException) throw error;
+      if (error instanceof RpcException) throw error;
       console.error('[CategoriesService] getById error:', error);
-      throw new BadRequestException('Failed to retrieve category');
+      throw new RpcException({
+        statusCode: 400,
+        message: 'Failed to retrieve category',
+      });
     }
   }
 
   /**
    * Get category by slug with relationships
-   * @throws NotFoundException if category not found
+   * @throws RpcException if category not found
    */
   async getBySlug(dto: CategorySlugDto): Promise<CategoryWithRelations> {
     try {
@@ -80,14 +82,20 @@ export class CategoriesService implements ICategoriesService {
       });
 
       if (!category) {
-        throw new NotFoundException(`Category with slug '${dto.slug}' not found`);
+        throw new RpcException({
+          statusCode: 404,
+          message: `Category with slug '${dto.slug}' not found`,
+        });
       }
 
       return this.mapper.mapToCategoryWithRelations(category);
     } catch (error) {
-      if (error instanceof NotFoundException) throw error;
+      if (error instanceof RpcException) throw error;
       console.error('[CategoriesService] getBySlug error:', error);
-      throw new BadRequestException('Failed to retrieve category');
+      throw new RpcException({
+        statusCode: 400,
+        message: 'Failed to retrieve category',
+      });
     }
   }
 
@@ -141,14 +149,17 @@ export class CategoriesService implements ICategoriesService {
       };
     } catch (error) {
       console.error('[CategoriesService] list error:', error);
-      throw new BadRequestException('Failed to retrieve categories');
+      throw new RpcException({
+        statusCode: 400,
+        message: 'Failed to retrieve categories',
+      });
     }
   }
 
   /**
    * Create a new category
-   * @throws ConflictException if slug already exists
-   * @throws BadRequestException if parent category doesn't exist
+   * @throws RpcException if slug already exists
+   * @throws RpcException if parent category doesn't exist
    */
   async create(dto: CategoryCreateDto): Promise<CategoryResponse> {
     try {
@@ -177,19 +188,22 @@ export class CategoriesService implements ICategoriesService {
       console.log(`[CategoriesService] Created category: ${category.id}`);
       return this.mapper.mapToCategoryResponse(category);
     } catch (error) {
-      if (error instanceof ConflictException || error instanceof BadRequestException) {
+      if (error instanceof RpcException) {
         throw error;
       }
       console.error('[CategoriesService] create error:', error);
-      throw new BadRequestException('Failed to create category');
+      throw new RpcException({
+        statusCode: 400,
+        message: 'Failed to create category',
+      });
     }
   }
 
   /**
    * Update an existing category
-   * @throws NotFoundException if category not found
-   * @throws ConflictException if slug already exists
-   * @throws BadRequestException if trying to set self as parent or create circular reference
+   * @throws RpcException if category not found
+   * @throws RpcException if slug already exists
+   * @throws RpcException if trying to set self as parent or create circular reference
    */
   async update(id: string, dto: CategoryUpdateDto): Promise<CategoryResponse> {
     try {
@@ -210,22 +224,21 @@ export class CategoriesService implements ICategoriesService {
       console.log(`[CategoriesService] Updated category: ${id}`);
       return this.mapper.mapToCategoryResponse(category);
     } catch (error) {
-      if (
-        error instanceof NotFoundException ||
-        error instanceof ConflictException ||
-        error instanceof BadRequestException
-      ) {
+      if (error instanceof RpcException) {
         throw error;
       }
       console.error('[CategoriesService] update error:', error);
-      throw new BadRequestException('Failed to update category');
+      throw new RpcException({
+        statusCode: 400,
+        message: 'Failed to update category',
+      });
     }
   }
 
   /**
    * Delete a category
-   * @throws NotFoundException if category not found
-   * @throws BadRequestException if category has children or products
+   * @throws RpcException if category not found
+   * @throws RpcException if category has children or products
    */
   async delete(id: string): Promise<{ success: boolean; id: string }> {
     try {
@@ -238,17 +251,20 @@ export class CategoriesService implements ICategoriesService {
       console.log(`[CategoriesService] Deleted category: ${id}`);
       return { success: true, id };
     } catch (error) {
-      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+      if (error instanceof RpcException) {
         throw error;
       }
       console.error('[CategoriesService] delete error:', error);
-      throw new BadRequestException('Failed to delete category');
+      throw new RpcException({
+        statusCode: 400,
+        message: 'Failed to delete category',
+      });
     }
   }
 
   /**
    * Get existing category by ID
-   * @throws NotFoundException if category not found
+   * @throws RpcException if category not found
    * @private
    */
   private async getExistingCategory(id: string): Promise<{ id: string; slug: string }> {
@@ -258,7 +274,10 @@ export class CategoriesService implements ICategoriesService {
     });
 
     if (!category) {
-      throw new NotFoundException(`Category with ID ${id} not found`);
+      throw new RpcException({
+        statusCode: 404,
+        message: `Category with ID ${id} not found`,
+      });
     }
 
     return category;

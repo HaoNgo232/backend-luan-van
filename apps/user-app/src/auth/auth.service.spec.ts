@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { UnauthorizedException } from '@nestjs/common';
+import { RpcException } from '@nestjs/microservices';
 import { AuthService } from './auth.service';
 import { JwtService } from '@shared/main';
 import { LoginDto } from '@shared/dto/auth.dto';
@@ -88,7 +88,7 @@ describe('AuthService', () => {
       expect(mockJwtService.signToken).toHaveBeenCalledTimes(2); // access + refresh token
     });
 
-    it('should throw UnauthorizedException when user not found', async () => {
+    it('should throw RpcException when user not found', async () => {
       const loginDto: LoginDto = {
         email: 'notfound@example.com',
         password: 'password123',
@@ -96,10 +96,10 @@ describe('AuthService', () => {
 
       prisma.user.findUnique.mockResolvedValue(null);
 
-      await expect(service.login(loginDto)).rejects.toThrow(UnauthorizedException);
+      await expect(service.login(loginDto)).rejects.toThrow(RpcException);
     });
 
-    it('should throw UnauthorizedException when password is invalid', async () => {
+    it('should throw RpcException when password is invalid', async () => {
       const loginDto: LoginDto = {
         email: 'test@example.com',
         password: 'wrongpassword',
@@ -115,10 +115,10 @@ describe('AuthService', () => {
       prisma.user.findUnique.mockResolvedValue(mockUser);
       (bcrypt.compare as jest.Mock).mockResolvedValue(false);
 
-      await expect(service.login(loginDto)).rejects.toThrow(UnauthorizedException);
+      await expect(service.login(loginDto)).rejects.toThrow(RpcException);
     });
 
-    it('should throw UnauthorizedException when user is inactive', async () => {
+    it('should throw RpcException when user is inactive', async () => {
       const loginDto: LoginDto = {
         email: 'test@example.com',
         password: 'password123',
@@ -133,7 +133,7 @@ describe('AuthService', () => {
 
       prisma.user.findUnique.mockResolvedValue(mockUser);
 
-      await expect(service.login(loginDto)).rejects.toThrow(UnauthorizedException);
+      await expect(service.login(loginDto)).rejects.toThrow(RpcException);
     });
   });
 
@@ -159,23 +159,23 @@ describe('AuthService', () => {
       expect(mockJwtService.verifyToken).toHaveBeenCalledWith('valid_token');
     });
 
-    it('should throw UnauthorizedException when token is invalid', async () => {
-      mockJwtService.verifyToken.mockRejectedValue(new UnauthorizedException('Invalid token'));
-
-      await expect(service.verify({ token: 'invalid_token' })).rejects.toThrow(
-        UnauthorizedException,
+    it('should throw RpcException when token is invalid', async () => {
+      mockJwtService.verifyToken.mockRejectedValue(
+        new RpcException({ statusCode: 401, message: 'Invalid token' }),
       );
+
+      await expect(service.verify({ token: 'invalid_token' })).rejects.toThrow(RpcException);
     });
 
-    it('should throw UnauthorizedException when token is expired', async () => {
-      mockJwtService.verifyToken.mockRejectedValue(new UnauthorizedException('Token has expired'));
-
-      await expect(service.verify({ token: 'expired_token' })).rejects.toThrow(
-        UnauthorizedException,
+    it('should throw RpcException when token is expired', async () => {
+      mockJwtService.verifyToken.mockRejectedValue(
+        new RpcException({ statusCode: 401, message: 'Token has expired' }),
       );
+
+      await expect(service.verify({ token: 'expired_token' })).rejects.toThrow(RpcException);
     });
 
-    it('should throw UnauthorizedException when user is inactive', async () => {
+    it('should throw RpcException when user is inactive', async () => {
       const mockPayload = {
         sub: '1', // Use 'sub' instead of 'userId'
         email: 'test@example.com',
@@ -190,7 +190,7 @@ describe('AuthService', () => {
       mockJwtService.verifyToken.mockResolvedValue(mockPayload);
       prisma.user.findUnique.mockResolvedValue(mockUser);
 
-      await expect(service.verify({ token: 'valid_token' })).rejects.toThrow(UnauthorizedException);
+      await expect(service.verify({ token: 'valid_token' })).rejects.toThrow(RpcException);
     });
   });
 
@@ -219,11 +219,13 @@ describe('AuthService', () => {
       expect(result).toHaveProperty('refreshToken');
     });
 
-    it('should throw UnauthorizedException when refresh token is invalid', async () => {
-      mockJwtService.verifyToken.mockRejectedValue(new UnauthorizedException('Invalid token'));
+    it('should throw RpcException when refresh token is invalid', async () => {
+      mockJwtService.verifyToken.mockRejectedValue(
+        new RpcException({ statusCode: 401, message: 'Invalid token' }),
+      );
 
       await expect(service.refresh({ refreshToken: 'invalid_refresh' })).rejects.toThrow(
-        UnauthorizedException,
+        RpcException,
       );
     });
   });

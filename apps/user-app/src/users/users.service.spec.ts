@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { RpcException } from '@nestjs/microservices';
 import { UsersService } from './users.service';
 import { CreateUserDto, UpdateUserDto, UserRole } from '@shared/dto/user.dto';
 import * as bcrypt from 'bcryptjs';
@@ -80,10 +80,10 @@ describe('UsersService', () => {
       });
     });
 
-    it('should throw NotFoundException when user not found', async () => {
+    it('should throw RpcException when user not found', async () => {
       prisma.user.findUnique.mockResolvedValue(null);
 
-      await expect(service.findById('999')).rejects.toThrow(NotFoundException);
+      await expect(service.findById('999')).rejects.toThrow(RpcException);
     });
   });
 
@@ -114,7 +114,7 @@ describe('UsersService', () => {
       expect(prisma.user.create).toHaveBeenCalled();
     });
 
-    it('should throw BadRequestException when email exists', async () => {
+    it('should throw RpcException when email exists', async () => {
       const createDto: CreateUserDto = {
         email: 'existing@example.com',
         password: 'password123',
@@ -125,7 +125,7 @@ describe('UsersService', () => {
         email: createDto.email,
       });
 
-      await expect(service.create(createDto)).rejects.toThrow(BadRequestException);
+      await expect(service.create(createDto)).rejects.toThrow(RpcException);
     });
   });
 
@@ -172,12 +172,12 @@ describe('UsersService', () => {
       });
     });
 
-    it('should throw NotFoundException when user not found', async () => {
+    it('should throw RpcException when user not found', async () => {
       prisma.user.findUnique.mockResolvedValue(null);
 
       await expect(
         service.update('999', { fullName: 'Test', role: UserRole.ADMIN }),
-      ).rejects.toThrow(NotFoundException);
+      ).rejects.toThrow(RpcException);
     });
   });
 

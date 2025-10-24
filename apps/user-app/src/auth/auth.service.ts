@@ -1,4 +1,5 @@
-import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
+import { RpcException } from '@nestjs/microservices';
 import { LoginDto, VerifyDto, RefreshDto, RegisterDto } from '@shared/dto/auth.dto';
 import { AuthTokens, JwtService, UserResponse } from '@shared/main';
 import { PrismaService } from '@user-app/prisma/prisma.service';
@@ -49,11 +50,14 @@ export class AuthService implements IAuthService {
 
       return results;
     } catch (error) {
-      if (error instanceof UnauthorizedException) {
+      if (error instanceof RpcException) {
         throw error;
       }
       console.error('[AuthService] login error:', error);
-      throw new BadRequestException('Login failed');
+      throw new RpcException({
+        statusCode: 400,
+        message: 'Login failed',
+      });
     }
   }
 
@@ -64,7 +68,10 @@ export class AuthService implements IAuthService {
         where: { email: dto.email },
       });
       if (existingEmail) {
-        throw new BadRequestException('Email already exists');
+        throw new RpcException({
+          statusCode: 400,
+          message: 'Email already exists',
+        });
       }
 
       // Hash password với bcrypt (salt rounds = 10)
@@ -100,9 +107,12 @@ export class AuthService implements IAuthService {
 
       return results;
     } catch (error) {
-      if (error instanceof BadRequestException) throw error;
+      if (error instanceof RpcException) throw error;
       console.error('[AuthService] register error:', error);
-      throw new BadRequestException('Failed to register user');
+      throw new RpcException({
+        statusCode: 400,
+        message: 'Failed to register user',
+      });
     }
   }
 
@@ -112,7 +122,10 @@ export class AuthService implements IAuthService {
       const decoded = await this.jwtService.verifyToken(dto.token);
 
       if (!decoded.sub) {
-        throw new UnauthorizedException('Token payload must contain sub claim');
+        throw new RpcException({
+          statusCode: 401,
+          message: 'Token payload must contain sub claim',
+        });
       }
 
       // Get userId from sub claim (JOSE standard)
@@ -125,16 +138,22 @@ export class AuthService implements IAuthService {
       });
 
       if (!user || !user.isActive) {
-        throw new UnauthorizedException('Invalid or expired token');
+        throw new RpcException({
+          statusCode: 401,
+          message: 'Invalid or expired token',
+        });
       }
 
       return decoded;
     } catch (error) {
-      if (error instanceof UnauthorizedException) {
+      if (error instanceof RpcException) {
         throw error;
       }
       console.error('[AuthService] verify error:', error);
-      throw new UnauthorizedException('Token verification failed');
+      throw new RpcException({
+        statusCode: 401,
+        message: 'Token verification failed',
+      });
     }
   }
 
@@ -144,7 +163,10 @@ export class AuthService implements IAuthService {
       const decoded = await this.jwtService.verifyToken(dto.refreshToken);
 
       if (!decoded.sub) {
-        throw new UnauthorizedException('Token payload must contain sub claim');
+        throw new RpcException({
+          statusCode: 401,
+          message: 'Token payload must contain sub claim',
+        });
       }
 
       // Get userId from sub claim (JOSE standard)
@@ -162,7 +184,10 @@ export class AuthService implements IAuthService {
       });
 
       if (!user || !user.isActive) {
-        throw new UnauthorizedException('Invalid refresh token');
+        throw new RpcException({
+          statusCode: 401,
+          message: 'Invalid refresh token',
+        });
       }
 
       const tokens = await this.generateTokens({
@@ -173,11 +198,14 @@ export class AuthService implements IAuthService {
 
       return tokens;
     } catch (error) {
-      if (error instanceof UnauthorizedException) {
+      if (error instanceof RpcException) {
         throw error;
       }
       console.error('[AuthService] refresh error:', error);
-      throw new BadRequestException('Token refresh failed');
+      throw new RpcException({
+        statusCode: 400,
+        message: 'Token refresh failed',
+      });
     }
   }
 
@@ -267,7 +295,10 @@ export class AuthService implements IAuthService {
     });
 
     if (!user) {
-      throw new UnauthorizedException('Invalid email or password');
+      throw new RpcException({
+        statusCode: 401,
+        message: 'Invalid email or password',
+      });
     }
 
     const results = user as UserResponse & { passwordHash: string };
@@ -277,23 +308,29 @@ export class AuthService implements IAuthService {
 
   /**
    * Check if user account is active
-   * @throws UnauthorizedException if user is deactivated
+   * @throws RpcException if user is deactivated
    */
   private checkUserActive(user: { isActive: boolean }): void {
     if (!user.isActive) {
-      throw new UnauthorizedException('Account is deactivated');
+      throw new RpcException({
+        statusCode: 401,
+        message: 'Account is deactivated',
+      });
     }
   }
 
   /**
    * Verify password against hash
-   * @throws UnauthorizedException if password is invalid
+   * @throws RpcException if password is invalid
    */
   private async verifyPassword(password: string, passwordHash: string): Promise<void> {
     const isPasswordValid = await bcrypt.compare(password, passwordHash);
 
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Invalid email or password');
+      throw new RpcException({
+        statusCode: 401,
+        message: 'Invalid email or password',
+      });
     }
   }
 }

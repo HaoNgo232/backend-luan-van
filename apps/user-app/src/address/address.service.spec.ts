@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { RpcException } from '@nestjs/microservices';
 import { AddressService } from './address.service';
 import {
   AddressCreateDto,
@@ -100,16 +100,12 @@ describe('AddressService', () => {
       expect(result).toEqual([]);
     });
 
-    it('nên throw BadRequestException khi có lỗi database', async () => {
+    it('nên throw RpcException khi có lỗi database', async () => {
       const dto: AddressListByUserDto = { userId: 'user123' };
 
-      mockPrismaService.address.findMany.mockRejectedValue(
-        new Error('Database error'),
-      );
+      mockPrismaService.address.findMany.mockRejectedValue(new Error('Database error'));
 
-      await expect(service.listByUser(dto)).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(service.listByUser(dto)).rejects.toThrow(RpcException);
     });
   });
 
@@ -189,7 +185,7 @@ describe('AddressService', () => {
       });
     });
 
-    it('nên throw NotFoundException khi user không tồn tại', async () => {
+    it('nên throw RpcException khi user không tồn tại', async () => {
       const dto: AddressCreateDto = {
         userId: 'nonexistent',
         fullName: 'Nguyễn Văn A',
@@ -202,10 +198,10 @@ describe('AddressService', () => {
 
       mockPrismaService.user.findUnique.mockResolvedValue(null);
 
-      await expect(service.create(dto)).rejects.toThrow(NotFoundException);
+      await expect(service.create(dto)).rejects.toThrow(RpcException);
     });
 
-    it('nên throw BadRequestException khi có lỗi tạo địa chỉ', async () => {
+    it('nên throw RpcException khi có lỗi tạo địa chỉ', async () => {
       const dto: AddressCreateDto = {
         userId: 'user123',
         fullName: 'Nguyễn Văn A',
@@ -217,11 +213,9 @@ describe('AddressService', () => {
       };
 
       mockPrismaService.user.findUnique.mockResolvedValue({ id: 'user123' });
-      mockPrismaService.address.create.mockRejectedValue(
-        new Error('Database error'),
-      );
+      mockPrismaService.address.create.mockRejectedValue(new Error('Database error'));
 
-      await expect(service.create(dto)).rejects.toThrow(BadRequestException);
+      await expect(service.create(dto)).rejects.toThrow(RpcException);
     });
   });
 
@@ -251,9 +245,7 @@ describe('AddressService', () => {
         createdAt: new Date(),
       };
 
-      mockPrismaService.address.findUnique.mockResolvedValue(
-        mockExistingAddress,
-      );
+      mockPrismaService.address.findUnique.mockResolvedValue(mockExistingAddress);
       mockPrismaService.address.update.mockResolvedValue(mockUpdatedAddress);
 
       const result = await service.update(addressId, dto);
@@ -289,9 +281,7 @@ describe('AddressService', () => {
         createdAt: new Date(),
       };
 
-      mockPrismaService.address.findUnique.mockResolvedValue(
-        mockExistingAddress,
-      );
+      mockPrismaService.address.findUnique.mockResolvedValue(mockExistingAddress);
       mockPrismaService.address.updateMany.mockResolvedValue({ count: 1 });
       mockPrismaService.address.update.mockResolvedValue(mockUpdatedAddress);
 
@@ -304,7 +294,7 @@ describe('AddressService', () => {
       });
     });
 
-    it('nên throw NotFoundException khi địa chỉ không tồn tại', async () => {
+    it('nên throw RpcException khi địa chỉ không tồn tại', async () => {
       const addressId = 'nonexistent';
       const dto: AddressUpdateDto = {
         fullName: 'Nguyễn Văn B',
@@ -312,12 +302,10 @@ describe('AddressService', () => {
 
       mockPrismaService.address.findUnique.mockResolvedValue(null);
 
-      await expect(service.update(addressId, dto)).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.update(addressId, dto)).rejects.toThrow(RpcException);
     });
 
-    it('nên throw BadRequestException khi có lỗi cập nhật', async () => {
+    it('nên throw RpcException khi có lỗi cập nhật', async () => {
       const addressId = 'addr1';
       const dto: AddressUpdateDto = {
         fullName: 'Nguyễn Văn B',
@@ -327,13 +315,9 @@ describe('AddressService', () => {
         id: addressId,
         userId: 'user123',
       });
-      mockPrismaService.address.update.mockRejectedValue(
-        new Error('Database error'),
-      );
+      mockPrismaService.address.update.mockRejectedValue(new Error('Database error'));
 
-      await expect(service.update(addressId, dto)).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(service.update(addressId, dto)).rejects.toThrow(RpcException);
     });
   });
 
@@ -346,9 +330,7 @@ describe('AddressService', () => {
         userId: 'user123',
       };
 
-      mockPrismaService.address.findUnique.mockResolvedValue(
-        mockExistingAddress,
-      );
+      mockPrismaService.address.findUnique.mockResolvedValue(mockExistingAddress);
       mockPrismaService.address.delete.mockResolvedValue(mockExistingAddress);
 
       const result = await service.delete(addressId);
@@ -383,9 +365,7 @@ describe('AddressService', () => {
         createdAt: new Date(),
       };
 
-      mockPrismaService.address.findUnique.mockResolvedValue(
-        mockExistingAddress,
-      );
+      mockPrismaService.address.findUnique.mockResolvedValue(mockExistingAddress);
       mockPrismaService.address.delete.mockResolvedValue(mockExistingAddress);
       mockPrismaService.address.findFirst.mockResolvedValue(mockNextAddress);
       mockPrismaService.address.update.mockResolvedValue({
@@ -409,17 +389,15 @@ describe('AddressService', () => {
       });
     });
 
-    it('nên throw NotFoundException khi địa chỉ không tồn tại', async () => {
+    it('nên throw RpcException khi địa chỉ không tồn tại', async () => {
       const addressId = 'nonexistent';
 
       mockPrismaService.address.findUnique.mockResolvedValue(null);
 
-      await expect(service.delete(addressId)).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.delete(addressId)).rejects.toThrow(RpcException);
     });
 
-    it('nên throw BadRequestException khi có lỗi xóa', async () => {
+    it('nên throw RpcException khi có lỗi xóa', async () => {
       const addressId = 'addr1';
 
       mockPrismaService.address.findUnique.mockResolvedValue({
@@ -427,13 +405,9 @@ describe('AddressService', () => {
         isDefault: false,
         userId: 'user123',
       });
-      mockPrismaService.address.delete.mockRejectedValue(
-        new Error('Database error'),
-      );
+      mockPrismaService.address.delete.mockRejectedValue(new Error('Database error'));
 
-      await expect(service.delete(addressId)).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(service.delete(addressId)).rejects.toThrow(RpcException);
     });
   });
 
@@ -462,9 +436,7 @@ describe('AddressService', () => {
         createdAt: new Date(),
       };
 
-      mockPrismaService.address.findFirst.mockResolvedValue(
-        mockExistingAddress,
-      );
+      mockPrismaService.address.findFirst.mockResolvedValue(mockExistingAddress);
       mockPrismaService.address.updateMany.mockResolvedValue({ count: 2 });
       mockPrismaService.address.update.mockResolvedValue(mockUpdatedAddress);
 
@@ -481,7 +453,7 @@ describe('AddressService', () => {
       });
     });
 
-    it('nên throw NotFoundException khi địa chỉ không tồn tại hoặc không thuộc về user', async () => {
+    it('nên throw RpcException khi địa chỉ không tồn tại hoặc không thuộc về user', async () => {
       const dto: AddressSetDefaultDto = {
         addressId: 'addr1',
         userId: 'user123',
@@ -489,12 +461,10 @@ describe('AddressService', () => {
 
       mockPrismaService.address.findFirst.mockResolvedValue(null);
 
-      await expect(service.setDefaultAddress(dto)).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.setDefaultAddress(dto)).rejects.toThrow(RpcException);
     });
 
-    it('nên throw BadRequestException khi có lỗi cập nhật', async () => {
+    it('nên throw RpcException khi có lỗi cập nhật', async () => {
       const dto: AddressSetDefaultDto = {
         addressId: 'addr1',
         userId: 'user123',
@@ -504,13 +474,9 @@ describe('AddressService', () => {
         id: 'addr1',
         userId: 'user123',
       });
-      mockPrismaService.address.updateMany.mockRejectedValue(
-        new Error('Database error'),
-      );
+      mockPrismaService.address.updateMany.mockRejectedValue(new Error('Database error'));
 
-      await expect(service.setDefaultAddress(dto)).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(service.setDefaultAddress(dto)).rejects.toThrow(RpcException);
     });
   });
 });

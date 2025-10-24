@@ -1,4 +1,5 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
+import { RpcException } from '@nestjs/microservices';
 import {
   AddressCreateDto,
   AddressUpdateDto,
@@ -30,7 +31,10 @@ export class AddressService implements IAddressService {
       return addresses;
     } catch (error) {
       console.error('[AddressService] listByUser error:', error);
-      throw new BadRequestException('Không thể lấy danh sách địa chỉ');
+      throw new RpcException({
+        statusCode: 400,
+        message: 'Không thể lấy danh sách địa chỉ',
+      });
     }
   }
 
@@ -43,7 +47,10 @@ export class AddressService implements IAddressService {
       });
 
       if (!userExists) {
-        throw new NotFoundException(`Người dùng ${dto.userId} không tồn tại`);
+        throw new RpcException({
+          statusCode: 404,
+          message: `Người dùng ${dto.userId} không tồn tại`,
+        });
       }
 
       // QUAN TRỌNG: Chỉ được có 1 địa chỉ mặc định cho mỗi user
@@ -71,9 +78,12 @@ export class AddressService implements IAddressService {
 
       return address;
     } catch (error) {
-      if (error instanceof NotFoundException) throw error;
+      if (error instanceof RpcException) throw error;
       console.error('[AddressService] create error:', error);
-      throw new BadRequestException('Không thể tạo địa chỉ');
+      throw new RpcException({
+        statusCode: 400,
+        message: 'Không thể tạo địa chỉ',
+      });
     }
   }
 
@@ -86,7 +96,10 @@ export class AddressService implements IAddressService {
       });
 
       if (!existingAddress) {
-        throw new NotFoundException(`Địa chỉ ${id} không tồn tại`);
+        throw new RpcException({
+          statusCode: 404,
+          message: `Địa chỉ ${id} không tồn tại`,
+        });
       }
 
       // Nếu cập nhật thành địa chỉ mặc định, bỏ mặc định của các địa chỉ khác
@@ -113,9 +126,12 @@ export class AddressService implements IAddressService {
 
       return updatedAddress;
     } catch (error) {
-      if (error instanceof NotFoundException) throw error;
+      if (error instanceof RpcException) throw error;
       console.error('[AddressService] update error:', error);
-      throw new BadRequestException('Không thể cập nhật địa chỉ');
+      throw new RpcException({
+        statusCode: 400,
+        message: 'Không thể cập nhật địa chỉ',
+      });
     }
   }
 
@@ -128,7 +144,10 @@ export class AddressService implements IAddressService {
       });
 
       if (!existingAddress) {
-        throw new NotFoundException(`Địa chỉ ${id} không tồn tại`);
+        throw new RpcException({
+          statusCode: 404,
+          message: `Địa chỉ ${id} không tồn tại`,
+        });
       }
 
       // Xóa địa chỉ
@@ -158,9 +177,12 @@ export class AddressService implements IAddressService {
         message: 'Đã xóa địa chỉ thành công',
       };
     } catch (error) {
-      if (error instanceof NotFoundException) throw error;
+      if (error instanceof RpcException) throw error;
       console.error('[AddressService] delete error:', error);
-      throw new BadRequestException('Không thể xóa địa chỉ');
+      throw new RpcException({
+        statusCode: 400,
+        message: 'Không thể xóa địa chỉ',
+      });
     }
   }
 
@@ -176,9 +198,10 @@ export class AddressService implements IAddressService {
       });
 
       if (!existingAddress) {
-        throw new NotFoundException(
-          `Địa chỉ ${dto.addressId} không tồn tại hoặc không thuộc về người dùng này`,
-        );
+        throw new RpcException({
+          statusCode: 404,
+          message: `Địa chỉ ${dto.addressId} không tồn tại hoặc không thuộc về người dùng này`,
+        });
       }
 
       // Bỏ mặc định của tất cả địa chỉ khác
@@ -195,9 +218,12 @@ export class AddressService implements IAddressService {
 
       return updatedAddress;
     } catch (error) {
-      if (error instanceof NotFoundException) throw error;
+      if (error instanceof RpcException) throw error;
       console.error('[AddressService] setDefaultAddress error:', error);
-      throw new BadRequestException('Không thể đặt địa chỉ mặc định');
+      throw new RpcException({
+        statusCode: 400,
+        message: 'Không thể đặt địa chỉ mặc định',
+      });
     }
   }
 }

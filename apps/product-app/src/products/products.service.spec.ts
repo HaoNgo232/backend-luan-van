@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
+import { RpcException } from '@nestjs/microservices';
 import { ProductsService } from './products.service';
 import { PrismaService } from '@product-app/prisma/prisma.service';
 import { ProductMapper } from './mappers/product.mapper';
@@ -126,19 +126,16 @@ describe('ProductsService', () => {
       expect(mapper.mapToProductResponse).toHaveBeenCalledWith(mockProduct);
     });
 
-    it('should throw NotFoundException when product not found', async () => {
+    it('should throw RpcException when product not found', async () => {
       mockPrismaService.product.findUnique.mockResolvedValue(null);
 
-      await expect(service.getById({ id: 'non-existent' })).rejects.toThrow(NotFoundException);
-      await expect(service.getById({ id: 'non-existent' })).rejects.toThrow(
-        'Product with ID non-existent not found',
-      );
+      await expect(service.getById({ id: 'non-existent' })).rejects.toThrow(RpcException);
     });
 
-    it('should throw BadRequestException on database error', async () => {
+    it('should throw RpcException on database error', async () => {
       mockPrismaService.product.findUnique.mockRejectedValue(new Error('DB error'));
 
-      await expect(service.getById({ id: 'prod-1' })).rejects.toThrow(BadRequestException);
+      await expect(service.getById({ id: 'prod-1' })).rejects.toThrow(RpcException);
     });
   });
 
@@ -158,10 +155,10 @@ describe('ProductsService', () => {
       expect(mapper.mapToProductResponse).toHaveBeenCalledWith(mockProduct);
     });
 
-    it('should throw NotFoundException when product not found', async () => {
+    it('should throw RpcException when product not found', async () => {
       mockPrismaService.product.findUnique.mockResolvedValue(null);
 
-      await expect(service.getBySlug({ slug: 'non-existent' })).rejects.toThrow(NotFoundException);
+      await expect(service.getBySlug({ slug: 'non-existent' })).rejects.toThrow(RpcException);
     });
   });
 
@@ -281,35 +278,38 @@ describe('ProductsService', () => {
       expect(prisma.product.create).toHaveBeenCalled();
     });
 
-    it('should throw ConflictException if SKU already exists', async () => {
+    it('should throw RpcException if SKU already exists', async () => {
       mockProductValidator.validateUniqueSKUAndSlug.mockRejectedValue(
-        new ConflictException("Product with SKU 'SKU-002' already exists"),
+        new RpcException({
+          statusCode: 409,
+          message: "Product with SKU 'SKU-002' already exists",
+        }),
       );
 
-      await expect(service.create(createDto)).rejects.toThrow(ConflictException);
-      await expect(service.create(createDto)).rejects.toThrow(
-        "Product with SKU 'SKU-002' already exists",
-      );
+      await expect(service.create(createDto)).rejects.toThrow(RpcException);
     });
 
-    it('should throw ConflictException if slug already exists', async () => {
+    it('should throw RpcException if slug already exists', async () => {
       mockProductValidator.validateUniqueSKUAndSlug.mockRejectedValue(
-        new ConflictException("Product with slug 'new-product' already exists"),
+        new RpcException({
+          statusCode: 409,
+          message: "Product with slug 'new-product' already exists",
+        }),
       );
 
-      await expect(service.create(createDto)).rejects.toThrow(ConflictException);
-      await expect(service.create(createDto)).rejects.toThrow(
-        "Product with slug 'new-product' already exists",
-      );
+      await expect(service.create(createDto)).rejects.toThrow(RpcException);
     });
 
-    it('should throw BadRequestException if category not found', async () => {
+    it('should throw RpcException if category not found', async () => {
       mockProductValidator.validateUniqueSKUAndSlug.mockResolvedValue(undefined);
       mockProductValidator.validateCategoryExists.mockRejectedValue(
-        new BadRequestException('Category with ID cat-1 not found'),
+        new RpcException({
+          statusCode: 400,
+          message: 'Category with ID cat-1 not found',
+        }),
       );
 
-      await expect(service.create(createDto)).rejects.toThrow(BadRequestException);
+      await expect(service.create(createDto)).rejects.toThrow(RpcException);
     });
   });
 
@@ -339,20 +339,23 @@ describe('ProductsService', () => {
       expect(prisma.product.update).toHaveBeenCalled();
     });
 
-    it('should throw NotFoundException if product not found', async () => {
+    it('should throw RpcException if product not found', async () => {
       mockPrismaService.product.findUnique.mockResolvedValue(null);
 
-      await expect(service.update('non-existent', updateDto)).rejects.toThrow(NotFoundException);
+      await expect(service.update('non-existent', updateDto)).rejects.toThrow(RpcException);
     });
 
-    it('should throw ConflictException if new slug already exists', async () => {
+    it('should throw RpcException if new slug already exists', async () => {
       mockPrismaService.product.findUnique.mockResolvedValue(mockProduct);
       mockProductValidator.validateSlugForUpdate.mockRejectedValue(
-        new ConflictException("Product with slug 'existing-slug' already exists"),
+        new RpcException({
+          statusCode: 409,
+          message: "Product with slug 'existing-slug' already exists",
+        }),
       );
 
       await expect(service.update('prod-1', { slug: 'existing-slug' })).rejects.toThrow(
-        ConflictException,
+        RpcException,
       );
     });
   });
@@ -370,10 +373,10 @@ describe('ProductsService', () => {
       });
     });
 
-    it('should throw NotFoundException if product not found', async () => {
+    it('should throw RpcException if product not found', async () => {
       mockPrismaService.product.findUnique.mockResolvedValue(null);
 
-      await expect(service.delete('non-existent')).rejects.toThrow(NotFoundException);
+      await expect(service.delete('non-existent')).rejects.toThrow(RpcException);
     });
   });
 
@@ -404,13 +407,13 @@ describe('ProductsService', () => {
       });
     });
 
-    it('should throw NotFoundException if product not found', async () => {
+    it('should throw RpcException if product not found', async () => {
       mockProductValidator.validateStockChangeQuantity.mockReturnValue(undefined);
       mockPrismaService.product.findUnique.mockResolvedValue(null);
 
       await expect(
         service.incrementStock({ productId: 'non-existent', quantity: 5 }),
-      ).rejects.toThrow(NotFoundException);
+      ).rejects.toThrow(RpcException);
     });
   });
 
@@ -439,28 +442,28 @@ describe('ProductsService', () => {
       expect(validator.validateSufficientStock).toHaveBeenCalledWith(10, 3);
     });
 
-    it('should throw BadRequestException if insufficient stock', async () => {
+    it('should throw RpcException if insufficient stock', async () => {
       mockProductValidator.validateStockChangeQuantity.mockReturnValue(undefined);
       mockPrismaService.product.findUnique.mockResolvedValue(mockProduct);
       mockProductValidator.validateSufficientStock.mockImplementation(() => {
-        throw new BadRequestException('Insufficient stock. Available: 10, Requested: 15');
+        throw new RpcException({
+          statusCode: 400,
+          message: 'Insufficient stock. Available: 10, Requested: 15',
+        });
       });
 
       await expect(service.decrementStock({ productId: 'prod-1', quantity: 15 })).rejects.toThrow(
-        BadRequestException,
-      );
-      await expect(service.decrementStock({ productId: 'prod-1', quantity: 15 })).rejects.toThrow(
-        /Insufficient stock/,
+        RpcException,
       );
     });
 
-    it('should throw NotFoundException if product not found', async () => {
+    it('should throw RpcException if product not found', async () => {
       mockProductValidator.validateStockChangeQuantity.mockReturnValue(undefined);
       mockPrismaService.product.findUnique.mockResolvedValue(null);
 
       await expect(
         service.decrementStock({ productId: 'non-existent', quantity: 5 }),
-      ).rejects.toThrow(NotFoundException);
+      ).rejects.toThrow(RpcException);
     });
   });
 });

@@ -1,4 +1,5 @@
-import { BadRequestException, ConflictException, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
+import { RpcException } from '@nestjs/microservices';
 import { PrismaService } from '@product-app/prisma/prisma.service';
 
 /**
@@ -11,7 +12,7 @@ export class CategoryValidator {
 
   /**
    * Validate slug uniqueness
-   * @throws ConflictException if slug already exists
+   * @throws RpcException if slug already exists
    */
   async validateSlugUnique(slug: string): Promise<void> {
     const existing = await this.prisma.category.findUnique({
@@ -19,13 +20,16 @@ export class CategoryValidator {
     });
 
     if (existing) {
-      throw new ConflictException(`Category with slug '${slug}' already exists`);
+      throw new RpcException({
+        statusCode: 409,
+        message: `Category with slug '${slug}' already exists`,
+      });
     }
   }
 
   /**
    * Validate slug uniqueness when updating (allow same slug)
-   * @throws ConflictException if slug already exists for different category
+   * @throws RpcException if slug already exists for different category
    */
   async validateSlugForUpdate(newSlug: string | undefined, currentSlug: string): Promise<void> {
     if (!newSlug || newSlug === currentSlug) {
@@ -37,13 +41,16 @@ export class CategoryValidator {
     });
 
     if (slugExists) {
-      throw new ConflictException(`Category with slug '${newSlug}' already exists`);
+      throw new RpcException({
+        statusCode: 409,
+        message: `Category with slug '${newSlug}' already exists`,
+      });
     }
   }
 
   /**
    * Validate parent category exists
-   * @throws BadRequestException if parent not found
+   * @throws RpcException if parent not found
    */
   async validateParentExists(parentId: string): Promise<void> {
     const parent = await this.prisma.category.findUnique({
@@ -51,13 +58,16 @@ export class CategoryValidator {
     });
 
     if (!parent) {
-      throw new BadRequestException(`Parent category with ID ${parentId} not found`);
+      throw new RpcException({
+        statusCode: 400,
+        message: `Parent category with ID ${parentId} not found`,
+      });
     }
   }
 
   /**
    * Validate parent update - check for self-reference and circular references
-   * @throws BadRequestException if parent validation fails
+   * @throws RpcException if parent validation fails
    */
   async validateParentUpdate(categoryId: string, newParentId: string | undefined): Promise<void> {
     if (newParentId === undefined) {
@@ -65,7 +75,10 @@ export class CategoryValidator {
     }
 
     if (newParentId === categoryId) {
-      throw new BadRequestException('Category cannot be its own parent');
+      throw new RpcException({
+        statusCode: 400,
+        message: 'Category cannot be its own parent',
+      });
     }
 
     if (!newParentId) {
@@ -76,9 +89,11 @@ export class CategoryValidator {
 
     const hasCircularReference = await this.checkCircularReference(newParentId, categoryId);
     if (hasCircularReference) {
-      throw new BadRequestException(
-        'Cannot create circular reference: the new parent is a descendant of this category',
-      );
+      throw new RpcException({
+        statusCode: 400,
+        message:
+          'Cannot create circular reference: the new parent is a descendant of this category',
+      });
     }
   }
 
@@ -121,7 +136,7 @@ export class CategoryValidator {
 
   /**
    * Validate category can be deleted (no children, no products)
-   * @throws BadRequestException if category has children or products
+   * @throws RpcException if category has children or products
    */
   async validateCanDelete(
     categoryId: string,
@@ -143,15 +158,17 @@ export class CategoryValidator {
     }
 
     if (category.children.length > 0) {
-      throw new BadRequestException(
-        'Cannot delete category with child categories. Delete or reassign children first.',
-      );
+      throw new RpcException({
+        statusCode: 400,
+        message: 'Cannot delete category with child categories. Delete or reassign children first.',
+      });
     }
 
     if (category.products.length > 0) {
-      throw new BadRequestException(
-        'Cannot delete category with products. Reassign products first.',
-      );
+      throw new RpcException({
+        statusCode: 400,
+        message: 'Cannot delete category with products. Reassign products first.',
+      });
     }
 
     return {
