@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestMicroservice } from '@nestjs/common';
 import { ClientsModule, Transport, ClientProxy } from '@nestjs/microservices';
@@ -91,9 +92,12 @@ describe('AuthController (e2e)', () => {
       await firstValueFrom(client.send(EVENTS.AUTH.REGISTER, registerDto));
 
       // Thử đăng ký lại với email trùng
-      await expect(
-        firstValueFrom(client.send(EVENTS.AUTH.REGISTER, registerDto)),
-      ).rejects.toThrow();
+      try {
+        await firstValueFrom(client.send(EVENTS.AUTH.REGISTER, registerDto));
+        fail('Should have thrown an error');
+      } catch (error: any) {
+        expect(error.message).toContain('Email already exists');
+      }
     });
 
     it('should login successfully', async () => {
@@ -136,7 +140,12 @@ describe('AuthController (e2e)', () => {
         password: 'WrongPassword123',
       };
 
-      await expect(firstValueFrom(client.send(EVENTS.AUTH.LOGIN, loginDto))).rejects.toThrow();
+      try {
+        await firstValueFrom(client.send(EVENTS.AUTH.LOGIN, loginDto));
+        fail('Should have thrown an error');
+      } catch (error: any) {
+        expect(error.message).toContain('Invalid email or password');
+      }
     });
 
     it('should fail login with non-existent email', async () => {
@@ -145,10 +154,35 @@ describe('AuthController (e2e)', () => {
         password: 'AnyPassword123',
       };
 
-      await expect(firstValueFrom(client.send(EVENTS.AUTH.LOGIN, loginDto))).rejects.toThrow();
+      try {
+        await firstValueFrom(client.send(EVENTS.AUTH.LOGIN, loginDto));
+        fail('Should have thrown an error');
+      } catch (error: any) {
+        expect(error.message).toContain('Invalid email or password');
+      }
     });
 
     it('should verify valid token', async () => {
+      // Đảm bảo có token hợp lệ từ login test trước
+      if (!accessToken) {
+        // Login để lấy token nếu chưa có
+        const registerDto: RegisterDto = {
+          email: `verify-test-${Date.now()}@example.com`,
+          password: 'Test@123456',
+          fullName: 'Verify Test User',
+        };
+        await firstValueFrom(client.send(EVENTS.AUTH.REGISTER, registerDto));
+
+        const loginDto: LoginDto = {
+          email: registerDto.email,
+          password: registerDto.password,
+        };
+        const loginResult = await firstValueFrom(client.send(EVENTS.AUTH.LOGIN, loginDto));
+        accessToken = loginResult.accessToken;
+        refreshToken = loginResult.refreshToken;
+        testUserEmail = registerDto.email;
+      }
+
       const result = await firstValueFrom(client.send(EVENTS.AUTH.VERIFY, { token: accessToken }));
 
       expect(result).toBeDefined();
@@ -157,6 +191,24 @@ describe('AuthController (e2e)', () => {
     });
 
     it('should refresh token', async () => {
+      // Đảm bảo có refresh token hợp lệ
+      if (!refreshToken) {
+        // Login để lấy token nếu chưa có
+        const registerDto: RegisterDto = {
+          email: `refresh-test-${Date.now()}@example.com`,
+          password: 'Test@123456',
+          fullName: 'Refresh Test User',
+        };
+        await firstValueFrom(client.send(EVENTS.AUTH.REGISTER, registerDto));
+
+        const loginDto: LoginDto = {
+          email: registerDto.email,
+          password: registerDto.password,
+        };
+        const loginResult = await firstValueFrom(client.send(EVENTS.AUTH.LOGIN, loginDto));
+        refreshToken = loginResult.refreshToken;
+      }
+
       const refreshDto: RefreshDto = {
         refreshToken,
       };

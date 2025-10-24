@@ -1,4 +1,5 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
+import { RpcException } from '@nestjs/microservices';
 import { CreateUserDto, UpdateUserDto, ListUsersDto } from '@shared/dto/user.dto';
 import { ListUsersResponse, UserResponse } from '@shared/main';
 import { PrismaService } from '@user-app/prisma/prisma.service';
@@ -34,15 +35,21 @@ export class UsersService implements IUserService {
       });
 
       if (!user) {
-        throw new NotFoundException(`User with ID ${id} not found`);
+        throw new RpcException({
+          statusCode: 404,
+          message: `User with ID ${id} not found`,
+        });
       }
 
       // Type assertion: Prisma enum → Shared enum
       return user as UserResponse;
     } catch (error) {
-      if (error instanceof NotFoundException) throw error;
+      if (error instanceof RpcException) throw error;
       console.error('[UsersService] findById error:', error);
-      throw new BadRequestException('Failed to find user');
+      throw new RpcException({
+        statusCode: 400,
+        message: 'Failed to find user',
+      });
     }
   }
 
@@ -63,15 +70,21 @@ export class UsersService implements IUserService {
       });
 
       if (!user) {
-        throw new NotFoundException(`User with email ${email} not found`);
+        throw new RpcException({
+          statusCode: 404,
+          message: `User with email ${email} not found`,
+        });
       }
 
       // Type assertion: Prisma enum → Shared enum
       return user as UserResponse;
     } catch (error) {
-      if (error instanceof NotFoundException) throw error;
+      if (error instanceof RpcException) throw error;
       console.error('[UsersService] findByEmail error:', error);
-      throw new BadRequestException('Failed to find user by email');
+      throw new RpcException({
+        statusCode: 400,
+        message: 'Failed to find user by email',
+      });
     }
   }
 
@@ -83,7 +96,10 @@ export class UsersService implements IUserService {
       });
 
       if (existingUser) {
-        throw new BadRequestException('Email already exists');
+        throw new RpcException({
+          statusCode: 400,
+          message: 'Email already exists',
+        });
       }
 
       // Hash password với bcrypt (salt rounds = 10)
@@ -99,19 +115,35 @@ export class UsersService implements IUserService {
           phone: dto.phone,
           role: dto.role || 'CUSTOMER', // Mặc định role là CUSTOMER nếu không truyền
         },
+        select: {
+          id: true,
+          email: true,
+          fullName: true,
+          phone: true,
+          role: true,
+          isActive: true,
+          createdAt: true,
+          updatedAt: true,
+        },
       });
 
       if (!user) {
-        throw new BadRequestException('Failed to create user');
+        throw new RpcException({
+          statusCode: 400,
+          message: 'Failed to create user',
+        });
       }
 
       // Type assertion: Prisma enum → Shared enum
       // LƯU Ý: Response KHÔNG bao gồm passwordHash (vì không select nó)
       return user as UserResponse;
     } catch (error) {
-      if (error instanceof BadRequestException) throw error;
+      if (error instanceof RpcException) throw error;
       console.error('[UsersService] create error:', error);
-      throw new BadRequestException('Failed to create user');
+      throw new RpcException({
+        statusCode: 400,
+        message: 'Failed to create user',
+      });
     }
   }
 
@@ -142,9 +174,12 @@ export class UsersService implements IUserService {
       // Type assertion: Prisma enum → Shared enum
       return user as UserResponse;
     } catch (error) {
-      if (error instanceof NotFoundException) throw error;
+      if (error instanceof RpcException) throw error;
       console.error('[UsersService] update error:', error);
-      throw new BadRequestException('Failed to update user');
+      throw new RpcException({
+        statusCode: 400,
+        message: 'Failed to update user',
+      });
     }
   }
 
@@ -159,9 +194,12 @@ export class UsersService implements IUserService {
 
       return { message: `User ${id} deactivated successfully` };
     } catch (error) {
-      if (error instanceof NotFoundException) throw error;
+      if (error instanceof RpcException) throw error;
       console.error('[UsersService] deactivate error:', error);
-      throw new BadRequestException('Failed to deactivate user');
+      throw new RpcException({
+        statusCode: 400,
+        message: 'Failed to deactivate user',
+      });
     }
   }
 
@@ -208,14 +246,20 @@ export class UsersService implements IUserService {
       return { users: users as UserResponse[], total, page, pageSize };
     } catch (error) {
       console.error('[UsersService] list error:', error);
-      throw new BadRequestException('Failed to list users');
+      throw new RpcException({
+        statusCode: 400,
+        message: 'Failed to list users',
+      });
     }
   }
 
   private async validateUserExists(id: string): Promise<void> {
     const user = await this.prisma.user.findUnique({ where: { id } });
     if (!user) {
-      throw new NotFoundException(`User with ID ${id} not found`);
+      throw new RpcException({
+        statusCode: 404,
+        message: `User with ID ${id} not found`,
+      });
     }
   }
 }

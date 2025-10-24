@@ -7,7 +7,7 @@ import { UserRole } from '@shared/dto';
 export type UserResponse = {
   id: string;
   email: string;
-  fullName: string | null;
+  fullName: string;
   phone: string | null;
   role: UserRole; // CUSTOMER, ADMIN
   isActive: boolean;
@@ -44,6 +44,7 @@ export type AuthTokens = {
   user: {
     sub: string;
     email: string;
+    fullName: string;
     role: UserRole;
   };
 };

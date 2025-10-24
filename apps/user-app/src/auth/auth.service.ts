@@ -1,7 +1,6 @@
 import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { LoginDto, VerifyDto, RefreshDto, RegisterDto } from '@shared/dto/auth.dto';
-import { AuthTokens, JwtService, UserResponse, UserRole } from '@shared/main';
-import { Prisma } from '@user-app/prisma/generated/client';
+import { AuthTokens, JwtService, UserResponse } from '@shared/main';
 import { PrismaService } from '@user-app/prisma/prisma.service';
 import * as bcrypt from 'bcryptjs';
 import * as jose from 'jose';
@@ -43,6 +42,7 @@ export class AuthService implements IAuthService {
         user: {
           sub: user.id,
           email: user.email,
+          fullName: user.fullName,
           role: user.role,
         },
       } as AuthTokens;
@@ -93,6 +93,7 @@ export class AuthService implements IAuthService {
         user: {
           sub: newUser.id,
           email: newUser.email,
+          fullName: newUser.fullName,
           role: newUser.role,
         },
       } as AuthTokens;
@@ -228,6 +229,7 @@ export class AuthService implements IAuthService {
   ): Promise<{
     id: string;
     email: string;
+    fullName: string;
     role: string;
   }> {
     // Find user by email
@@ -242,6 +244,7 @@ export class AuthService implements IAuthService {
     return {
       id: user.id,
       email: user.email,
+      fullName: user.fullName,
       role: user.role,
     };
   }
@@ -256,6 +259,7 @@ export class AuthService implements IAuthService {
       select: {
         id: true,
         email: true,
+        fullName: true,
         role: true,
         passwordHash: true,
         isActive: true,

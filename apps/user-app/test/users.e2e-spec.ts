@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestMicroservice } from '@nestjs/common';
 import { ClientsModule, Transport, ClientProxy } from '@nestjs/microservices';
@@ -86,7 +87,12 @@ describe('UsersController (e2e)', () => {
       await firstValueFrom(client.send(EVENTS.USER.CREATE, createDto));
 
       // Thử tạo user với email trùng - expect error
-      await expect(firstValueFrom(client.send(EVENTS.USER.CREATE, createDto))).rejects.toThrow();
+      try {
+        await firstValueFrom(client.send(EVENTS.USER.CREATE, createDto));
+        fail('Should have thrown an error');
+      } catch (error: any) {
+        expect(error.message).toContain('Email already exists');
+      }
     });
 
     it('should find user by ID', async () => {
@@ -108,9 +114,12 @@ describe('UsersController (e2e)', () => {
     });
 
     it('should throw NotFoundException when user ID not found', async () => {
-      await expect(
-        firstValueFrom(client.send(EVENTS.USER.FIND_BY_ID, 'non-existent-id')),
-      ).rejects.toThrow();
+      try {
+        await firstValueFrom(client.send(EVENTS.USER.FIND_BY_ID, 'non-existent-id'));
+        fail('Should have thrown an error');
+      } catch (error: any) {
+        expect(error.message).toContain('not found');
+      }
     });
 
     it('should find user by email', async () => {
@@ -130,9 +139,12 @@ describe('UsersController (e2e)', () => {
     });
 
     it('should throw NotFoundException when email not found', async () => {
-      await expect(
-        firstValueFrom(client.send(EVENTS.USER.FIND_BY_EMAIL, 'nonexistent@example.com')),
-      ).rejects.toThrow();
+      try {
+        await firstValueFrom(client.send(EVENTS.USER.FIND_BY_EMAIL, 'nonexistent@example.com'));
+        fail('Should have thrown an error');
+      } catch (error: any) {
+        expect(error.message).toContain('not found');
+      }
     });
 
     it('should update user', async () => {
@@ -165,9 +177,14 @@ describe('UsersController (e2e)', () => {
         fullName: 'Updated Name',
       };
 
-      await expect(
-        firstValueFrom(client.send(EVENTS.USER.UPDATE, { id: 'non-existent-id', dto: updateDto })),
-      ).rejects.toThrow();
+      try {
+        await firstValueFrom(
+          client.send(EVENTS.USER.UPDATE, { id: 'non-existent-id', dto: updateDto }),
+        );
+        fail('Should have thrown an error');
+      } catch (error: any) {
+        expect(error.message).toContain('not found');
+      }
     });
 
     it('should list users with pagination', async () => {
@@ -225,9 +242,12 @@ describe('UsersController (e2e)', () => {
     });
 
     it('should throw NotFoundException when deactivating non-existent user', async () => {
-      await expect(
-        firstValueFrom(client.send(EVENTS.USER.DEACTIVATE, 'non-existent-id')),
-      ).rejects.toThrow();
+      try {
+        await firstValueFrom(client.send(EVENTS.USER.DEACTIVATE, 'non-existent-id'));
+        fail('Should have thrown an error');
+      } catch (error: any) {
+        expect(error.message).toContain('not found');
+      }
     });
   });
 });
