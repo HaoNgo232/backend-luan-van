@@ -49,7 +49,7 @@
 
 ## Project Overview
 
-This platform is an e-commerce backend built with a microservices architecture for a graduation thesis project. It includes the following domains:
+A personal/coursework project experimenting with microservices architecture for an eyewear e-commerce platform. It includes the following domains:
 
 - **User Management** — Registration, authentication (RSA-based JWT), role-based access control (RBAC)
 - **Product Catalog** — Products with categories, image uploads (MinIO), slug-based routing, and 3D model support
